@@ -90,3 +90,72 @@ class ApiException implements Exception {
   @override
   String toString() => message;
 }
+
+/// Seats on every bus until an admin sets config/fleet (backend RULES.defaultBusSeats).
+const defaultBusSeats = 7;
+
+/// The driver's bus: seats paid by scan on the current trip (vehicles/{id}.load).
+class BusLoad {
+  const BusLoad({required this.plate, required this.capacity, required this.taken, this.tripEndsAt, this.route});
+  final String plate;
+  final int capacity, taken;
+
+  /// Where the bus is going on this trip; null until the driver (or staff) sets it.
+  final TripRoute? route;
+
+  /// When the trip clears on its own if nobody scans again.
+  final DateTime? tripEndsAt;
+
+  /// Seats paid at [now]; a trip that has timed out counts as an empty bus.
+  int takenAt(DateTime now) => tripEndsAt != null && now.isBefore(tripEndsAt!) ? taken : 0;
+}
+
+/// parks/{id}: a park and how many buses staff last counted there.
+class Park {
+  const Park({required this.id, required this.name, required this.location, required this.busCount, this.updatedAt});
+  final String id, name, location;
+  final int busCount;
+
+  /// When staff last updated the count; null if they never have.
+  final DateTime? updatedAt;
+
+  /// A count this old may no longer be true.
+  bool staleAt(DateTime now) => updatedAt == null || now.difference(updatedAt!) > const Duration(hours: 2);
+}
+
+/// landmarks/{id}: a place a trip can start or end.
+class Landmark {
+  const Landmark(this.id, this.name);
+  final String id, name;
+}
+
+/// vehicles/{id}.currentRoute: from one landmark to another, with the estimated minutes.
+class TripRoute {
+  const TripRoute({required this.fromId, required this.fromName, required this.toId, required this.toName, required this.etaMin, this.setByStaff = false});
+  final String fromId, fromName, toId, toName;
+  final int etaMin;
+
+  /// Staff changed it for the driver.
+  final bool setByStaff;
+
+  String get label => '$fromName → $toName';
+
+  static TripRoute? fromMap(Object? m) {
+    if (m is! Map || m['fromId'] == null || m['toId'] == null) return null;
+    return TripRoute(
+      fromId: '${m['fromId']}',
+      fromName: '${m['fromName'] ?? ''}',
+      toId: '${m['toId']}',
+      toName: '${m['toName'] ?? ''}',
+      etaMin: (m['etaMin'] as num?)?.toInt() ?? 0,
+      setByStaff: m['setByStaff'] == true,
+    );
+  }
+}
+
+/// The driver's average from riders' ratings (users/{uid}.ratingSum / ratingCount).
+class DriverRating {
+  const DriverRating({required this.sum, required this.count});
+  final int sum, count;
+  double get average => count == 0 ? 0 : sum / count;
+}

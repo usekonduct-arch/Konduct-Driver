@@ -64,6 +64,96 @@ class FirebaseDriverApi implements DriverApi {
       );
 
   @override
+  Stream<BusLoad?> busLoad() {
+    // users/{uid} names the vehicle; follow it and the fleet's seat count.
+    late StreamController<BusLoad?> c;
+    StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? userSub, vehicleSub, fleetSub;
+    String? vehicleId;
+    Map<String, dynamic>? vehicle;
+    var seats = defaultBusSeats;
+
+    void emit() {
+      final v = vehicle;
+      if (v == null || v['type'] == 'bike') {
+        c.add(null);
+        return;
+      }
+      final load = v['load'] is Map ? Map<String, dynamic>.from(v['load'] as Map) : const <String, dynamic>{};
+      final ends = (load['expiresAtMs'] as num?)?.toInt();
+      c.add(
+        BusLoad(
+          plate: v['plate'] as String? ?? '',
+          capacity: seats,
+          taken: (load['taken'] as num?)?.toInt() ?? 0,
+          tripEndsAt: ends == null ? null : DateTime.fromMillisecondsSinceEpoch(ends),
+          route: TripRoute.fromMap(v['currentRoute']),
+        ),
+      );
+    }
+
+    c = StreamController<BusLoad?>(
+      onListen: () {
+        fleetSub = _db.doc('config/fleet').snapshots().listen((s) {
+          seats = (s.data()?['busSeats'] as num?)?.toInt() ?? defaultBusSeats;
+          if (vehicle != null) emit();
+        }, onError: (_) {});
+        userSub = _db.doc('users/$_uid').snapshots().listen((u) {
+          final id = u.data()?['vehicleId'] as String?;
+          if (id == vehicleId) return;
+          vehicleId = id;
+          vehicle = null;
+          vehicleSub?.cancel();
+          if (id == null) return emit();
+          vehicleSub = _db.doc('vehicles/$id').snapshots().listen((v) {
+            vehicle = v.data();
+            emit();
+          }, onError: (_) {});
+        }, onError: c.addError);
+      },
+      onCancel: () async {
+        await userSub?.cancel();
+        await vehicleSub?.cancel();
+        await fleetSub?.cancel();
+      },
+    );
+    return c.stream;
+  }
+
+  @override
+  Future<void> newTrip() => _call('driverNewTrip', {});
+
+  @override
+  Stream<List<Landmark>> landmarks() => _db
+      .collection('landmarks')
+      .where('active', isEqualTo: true)
+      .snapshots()
+      .map((q) => q.docs.map((d) => Landmark(d.id, d.data()['name'] as String? ?? d.id)).toList()..sort((a, b) => a.name.compareTo(b.name)));
+
+  @override
+  Future<TripRoute> setRoute({required String fromId, required String toId, required bool newTrip}) async =>
+      TripRoute.fromMap(await _call('driverSetRoute', {'fromId': fromId, 'toId': toId, 'newTrip': newTrip}))!;
+
+  @override
+  Stream<DriverRating> rating() => _db.doc('users/$_uid').snapshots().map(
+    (s) => DriverRating(sum: (s.data()?['ratingSum'] as num?)?.toInt() ?? 0, count: (s.data()?['ratingCount'] as num?)?.toInt() ?? 0),
+  );
+
+  @override
+  Stream<List<Park>> parks() => _db.collection('parks').where('active', isEqualTo: true).snapshots().map(
+    (q) => q.docs.map((d) {
+      final m = d.data();
+      final at = (m['busCountAtMs'] as num?)?.toInt();
+      return Park(
+        id: d.id,
+        name: m['name'] as String? ?? '',
+        location: m['location'] as String? ?? '',
+        busCount: (m['busCount'] as num?)?.toInt() ?? 0,
+        updatedAt: at == null ? null : DateTime.fromMillisecondsSinceEpoch(at),
+      );
+    }).toList()..sort((a, b) => a.name.compareTo(b.name)),
+  );
+
+  @override
   Stream<BankAccounts> bankAccounts() {
     // users/{uid} names the approved account and any pending one; follow both documents.
     late StreamController<BankAccounts> c;

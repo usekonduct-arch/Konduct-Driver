@@ -14,6 +14,25 @@ abstract class DriverApi {
   /// Payouts to the bank, newest first.
   Stream<List<Payout>> payouts({int limit = 20});
 
+  /// This driver's bus and the seats paid by scan on its current trip; null for a bike or before
+  /// a vehicle is linked.
+  Stream<BusLoad?> busLoad();
+
+  /// The bus has emptied: clears the seats paid by scan so the next riders can pay.
+  Future<void> newTrip();
+
+  /// Places a trip can go between, by name.
+  Stream<List<Landmark>> landmarks();
+
+  /// Where the bus is going on this trip. With [newTrip] the seats paid by scan also clear.
+  Future<TripRoute> setRoute({required String fromId, required String toId, required bool newTrip});
+
+  /// Riders' average rating of this driver; count 0 before the first one.
+  Stream<DriverRating> rating();
+
+  /// Parks shown in the app and how many buses are there, by name.
+  Stream<List<Park>> parks();
+
   /// Where payouts go: the approved account, and any new one waiting for a staff check.
   Stream<BankAccounts> bankAccounts();
 

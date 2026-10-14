@@ -71,7 +71,40 @@ void main() {
     await settle(t, 1500);
     expect(find.textContaining('₦3,400 is on its way to ****4567'), findsOneWidget);
     expect(find.text('₦0'), findsOneWidget);
+    await t.scrollUntilVisible(find.text('To bank ****4567'), 300, scrollable: find.byType(Scrollable).first);
     expect(find.text('To bank ****4567'), findsOneWidget);
+    await t.pumpWidget(const SizedBox());
+    await settle(t, 1500);
+  });
+
+  testWidgets('a driver sees their rating, sets the trip route, starts a new trip, and sees the parks', (t) async {
+    await openHome(t);
+    expect(find.text('★ 4.6 from 23 ratings'), findsOneWidget);
+    expect(find.text('Shasha park → Main gate'), findsOneWidget);
+    expect(find.text('SEATS PAID BY SCAN'), findsOneWidget);
+    expect(find.text('of 7'), findsOneWidget);
+    expect(find.text('About 4 free'), findsOneWidget);
+
+    // Back the other way: the sheet offers the reverse route, and the seats clear.
+    await t.tap(find.text('New trip · bus emptied'));
+    await settle(t, 900);
+    expect(find.text('Start a new trip'), findsOneWidget);
+    await t.tap(find.text('Start trip'));
+    await settle(t, 1200);
+    expect(find.text('Main gate → Shasha park'), findsOneWidget);
+    expect(find.text('About 7 free'), findsOneWidget);
+
+    // A mid-trip correction keeps the seats.
+    await t.tap(find.text('Change'));
+    await settle(t, 900);
+    await t.tap(find.text('Senate building').last);
+    await settle(t, 300);
+    await t.tap(find.text('Save route'));
+    await settle(t, 1200);
+    expect(find.text('Main gate → Senate building'), findsOneWidget);
+    await t.scrollUntilVisible(find.text('Shasha park'), 200, scrollable: find.byType(Scrollable).first);
+    expect(find.text('BUSES AT THE PARKS'), findsOneWidget);
+    expect(find.text('Main Campus park'), findsOneWidget);
     await t.pumpWidget(const SizedBox());
     await settle(t, 1500);
   });

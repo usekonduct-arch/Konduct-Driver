@@ -6,6 +6,8 @@ import 'models.dart';
 /// Stand-in used without Firebase (`--dart-define=KONDUCT_DEMO=true`). Starts with ₦3,400 earned
 /// from a few sample fares. Bank accounts: any 10-digit number resolves to the driver's own name
 /// and is "approved" two seconds later, with no hold. Password `drive-safely-9`, PIN `1379`.
+/// The bus seats 7 and has 3 paid by scan on the current trip, Shasha park → Main gate.
+/// Riders rate the driver 4.6 from 23 rides.
 class DemoDriverApi implements DriverApi {
   DemoDriverApi({this.fullName = 'Tunde Adebayo'}) {
     final now = DateTime.now();
@@ -22,6 +24,9 @@ class DemoDriverApi implements DriverApi {
   final _payments = <Payment>[];
   final _payouts = <Payout>[];
   BankAccount? _active, _pending;
+  var _seatsTaken = 3;
+  TripRoute? _route = const TripRoute(fromId: 'shasha', fromName: 'Shasha park', toId: 'main-gate', toName: 'Main gate', etaMin: 12);
+  static const _places = [Landmark('hostels', 'Hostels'), Landmark('main-gate', 'Main gate'), Landmark('senate', 'Senate building'), Landmark('shasha', 'Shasha park')];
   final _changed = StreamController<void>.broadcast();
   var _n = 0;
 
@@ -44,6 +49,44 @@ class DemoDriverApi implements DriverApi {
 
   @override
   Stream<List<Payout>> payouts({int limit = 20}) => _live(() => _payouts.take(limit).toList());
+
+  @override
+  Stream<BusLoad?> busLoad() => _live(
+    () => BusLoad(plate: 'OS 482 KJA', capacity: defaultBusSeats, taken: _seatsTaken, tripEndsAt: DateTime.now().add(const Duration(minutes: 12)), route: _route),
+  );
+
+  @override
+  Future<void> newTrip() async {
+    await _lag(400);
+    _seatsTaken = 0;
+    _touch();
+  }
+
+  @override
+  Stream<List<Landmark>> landmarks() => Stream.value(_places);
+
+  @override
+  Future<TripRoute> setRoute({required String fromId, required String toId, required bool newTrip}) async {
+    await _lag(400);
+    final from = _places.firstWhere((l) => l.id == fromId);
+    final to = _places.firstWhere((l) => l.id == toId);
+    _route = TripRoute(fromId: from.id, fromName: from.name, toId: to.id, toName: to.name, etaMin: 9 + _places.indexOf(to));
+    if (newTrip) _seatsTaken = 0;
+    _touch();
+    return _route!;
+  }
+
+  @override
+  Stream<DriverRating> rating() => Stream.value(const DriverRating(sum: 106, count: 23));
+
+  @override
+  Stream<List<Park>> parks() {
+    final now = DateTime.now();
+    return Stream.value([
+      Park(id: 'main-campus', name: 'Main Campus park', location: 'Beside the main gate', busCount: 2, updatedAt: now.subtract(const Duration(minutes: 25))),
+      Park(id: 'shasha', name: 'Shasha park', location: 'Shasha junction, Osogbo', busCount: 4, updatedAt: now.subtract(const Duration(minutes: 6))),
+    ]);
+  }
 
   @override
   Stream<BankAccounts> bankAccounts() => _live(() => BankAccounts(active: _active, pending: _pending));
