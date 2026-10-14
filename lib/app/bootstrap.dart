@@ -8,6 +8,9 @@ import '../auth/auth_repository.dart';
 import '../auth/demo_auth_repository.dart';
 import '../auth/firebase_auth_repository.dart';
 import '../firebase/firebase_options.dart';
+import '../earnings/demo_driver_api.dart';
+import '../earnings/driver_api.dart';
+import '../earnings/firebase_driver_api.dart';
 import '../theme/tokens.dart';
 import 'app_info.dart';
 
@@ -18,24 +21,28 @@ Future<void> bootstrap() async {
 
   final options = firebaseOptions();
   final AuthRepository repo;
+  final DriverApi api;
   if (options != null) {
     await Firebase.initializeApp(options: options);
     repo = FirebaseAuthRepository();
+    api = FirebaseDriverApi();
   } else {
     repo = DemoAuthRepository();
+    api = DemoDriverApi();
   }
-  runApp(KonductApp(auth: AuthController(repo)));
+  runApp(KonductApp(auth: AuthController(repo), api: api));
 }
 
 class KonductApp extends StatelessWidget {
-  const KonductApp({super.key, required this.auth});
+  const KonductApp({super.key, required this.auth, required this.api});
   final AuthController auth;
+  final DriverApi api;
 
   @override
   Widget build(BuildContext context) => MaterialApp(
         title: AppInfo.name,
         debugShowCheckedModeBanner: false,
         theme: buildTheme(AppInfo.palette, dark: AppInfo.dark),
-        home: AuthGate(auth: auth),
+        home: AuthGate(auth: auth, api: api),
       );
 }

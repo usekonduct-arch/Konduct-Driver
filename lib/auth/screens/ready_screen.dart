@@ -7,11 +7,11 @@ import '../../ui/kit.dart';
 import '../../ui/scene/scenes.dart';
 import '../auth_repository.dart';
 
-/// End of sign-up, and the placeholder home until wallet / scan / trips are built.
+/// End of sign-up: a moment of celebration, then into earnings.
 class ReadyScreen extends StatelessWidget {
-  const ReadyScreen({super.key, required this.session, required this.onSignOut, this.demo = false});
+  const ReadyScreen({super.key, required this.session, required this.onContinue, this.demo = false});
   final Session session;
-  final VoidCallback onSignOut;
+  final VoidCallback onContinue;
   final bool demo;
 
   @override
@@ -58,27 +58,12 @@ class ReadyScreen extends StatelessWidget {
                       const Spacer(),
                       Entrance(
                         delay: const Duration(milliseconds: 780),
-                        child: Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(color: K.ink2, borderRadius: BorderRadius.circular(20), border: Border.all(color: const Color(0xFF2A313C))),
-                          child: Row(children: [
-                            const Icon(Icons.construction_rounded, color: K.yellow),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                'Your live payment alerts, trips and payouts land here next.',
-                                style: KText.small(K.muteDark),
-                              ),
-                            ),
-                          ]),
-                        ),
+                        child: Text('Every fare a student pays you lands here. Add your bank account and Konduct pays you out every evening.', style: KText.body(K.muteDark)),
                       ),
-                      const SizedBox(height: 14),
-                      Center(
-                        child: Pressable(
-                          onTap: onSignOut,
-                          child: Padding(padding: const EdgeInsets.all(10), child: Text('Sign out', style: KText.body(K.muteDark).copyWith(fontWeight: FontWeight.w700))),
-                        ),
+                      const SizedBox(height: 18),
+                      Entrance(
+                        delay: const Duration(milliseconds: 860),
+                        child: KButton(label: 'See my earnings', icon: Icons.arrow_forward_rounded, onTap: onContinue),
                       ),
                     ],
                   ),

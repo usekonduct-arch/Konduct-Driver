@@ -9,6 +9,7 @@ import 'package:konduct_driver/auth/auth_repository.dart';
 import 'package:konduct_driver/auth/demo_auth_repository.dart';
 import 'package:konduct_driver/auth/screens/pin_screen.dart';
 import 'package:konduct_driver/ui/kit.dart';
+import 'package:konduct_driver/earnings/demo_driver_api.dart';
 
 Future<void> settle(WidgetTester t, [int ms = 1200]) async {
   for (var i = 0; i < ms ~/ 100; i++) {
@@ -90,7 +91,7 @@ void main() {
   testWidgets('an onboarded driver links with the agent\'s code, sets a PIN and lands on ready', (t) async {
     phoneSize(t);
     final auth = AuthController(DemoAuthRepository());
-    await t.pumpWidget(KonductApp(auth: auth));
+    await t.pumpWidget(KonductApp(auth: auth, api: DemoDriverApi()));
     await settle(t, 2600);
     expect(auth.stage, Stage.signedOut);
 
@@ -113,6 +114,11 @@ void main() {
     expect(auth.stage, Stage.ready);
     expect(find.textContaining('Welcome,'), findsOneWidget);
 
+    await t.tap(find.text('See my earnings'));
+    await settle(t, 1500);
+    expect(find.text('TO BE PAID OUT'), findsOneWidget);
+    expect(find.text('₦3,400'), findsOneWidget);
+
     await t.pumpWidget(const SizedBox());
     await settle(t, 1500);
   });
@@ -120,7 +126,7 @@ void main() {
   testWidgets('a driver no agent registered is told how to get onboarded', (t) async {
     phoneSize(t);
     final auth = AuthController(DemoAuthRepository());
-    await t.pumpWidget(KonductApp(auth: auth));
+    await t.pumpWidget(KonductApp(auth: auth, api: DemoDriverApi()));
     await settle(t, 2600);
 
     await createAccount(t, 'newdriver@gmail.com', 'drive-safely-9');
@@ -136,7 +142,7 @@ void main() {
   testWidgets('signing in with the wrong password is explained', (t) async {
     phoneSize(t);
     final auth = AuthController(DemoAuthRepository());
-    await t.pumpWidget(KonductApp(auth: auth));
+    await t.pumpWidget(KonductApp(auth: auth, api: DemoDriverApi()));
     await settle(t, 2600);
     await t.tap(find.text('Sign in'));
     await settle(t);

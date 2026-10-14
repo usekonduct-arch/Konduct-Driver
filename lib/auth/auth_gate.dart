@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../earnings/driver_api.dart';
+import '../earnings/screens/home_screen.dart';
 import '../theme/tokens.dart';
 import 'auth_controller.dart';
 import 'screens/driver_claim_screen.dart';
@@ -11,8 +13,9 @@ import 'screens/welcome_screen.dart';
 
 /// Shows the screen for the current sign-up stage and animates between stages.
 class AuthGate extends StatelessWidget {
-  const AuthGate({super.key, required this.auth});
+  const AuthGate({super.key, required this.auth, required this.api});
   final AuthController auth;
+  final DriverApi api;
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +29,7 @@ class AuthGate extends StatelessWidget {
           opacity: a,
           child: ScaleTransition(scale: Tween(begin: 0.96, end: 1.0).animate(a), child: child),
         ),
-        child: KeyedSubtree(key: ValueKey(auth.stage), child: _screen(context)),
+        child: KeyedSubtree(key: ValueKey((auth.stage, auth.justJoined)), child: _screen(context)),
       ),
     );
   }
@@ -52,7 +55,8 @@ class AuthGate extends StatelessWidget {
           header: _DriverCard(auth: auth),
         );
       case Stage.ready:
-        return ReadyScreen(session: auth.session!, demo: demo, onSignOut: auth.signOut);
+        if (auth.justJoined) return ReadyScreen(session: auth.session!, demo: demo, onContinue: auth.enterHome);
+        return HomeScreen(key: ValueKey(auth.session!.uid), api: api, session: auth.session!, onSignOut: auth.signOut);
       case Stage.wrongApp:
         return BlockedScreen(
           title: 'This is a student account.',
