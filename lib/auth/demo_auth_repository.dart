@@ -2,15 +2,14 @@ import 'dart:async';
 
 import 'auth_repository.dart';
 
-/// Stand-in used while no Firebase project is configured, so every screen can be
-/// tried on a device. Code is always 123456. A number ending in 0000 plays a driver
-/// no agent has onboarded.
+/// Stand-in used without Firebase (`--dart-define=KONDUCT_DEMO=true`) so every screen can be
+/// tried on a device. Any email signs up; `taken@konduct.app` plays an email already in use.
+/// Signing in needs the password the account was created with in this session.
+/// Driver onboarding code: see [code].
 class DemoAuthRepository implements AuthRepository {
-  static const code = '123456';
-
   final _ctrl = StreamController<Session?>.broadcast();
+  final _accounts = <String, String>{};
   Session? _session;
-  String? _phone;
 
   @override
   bool get isDemo => true;
@@ -23,28 +22,41 @@ class DemoAuthRepository implements AuthRepository {
 
   void _emit(Session? s) => _ctrl.add(_session = s);
 
-  Future<void> _lag([int ms = 900]) => Future.delayed(Duration(milliseconds: ms));
+  Future<void> _lag([int ms = 800]) => Future.delayed(Duration(milliseconds: ms));
 
   @override
-  Future<void> sendCode(String e164, {bool resend = false}) async {
+  Future<void> signUp(String email, String password) async {
     await _lag();
-    _phone = e164;
+    if (email == 'taken@konduct.app' || _accounts.containsKey(email)) {
+      throw const AuthException('email-already-in-use', 'There\'s already an account with this email. Sign in instead.');
+    }
+    _accounts[email] = password;
+    _emit(Session(uid: 'demo-${email.hashCode}', email: email));
   }
 
   @override
-  Future<void> verifyCode(String c) async {
-    await _lag(700);
-    if (c != code) throw const AuthException('invalid-verification-code', 'That code isn\'t right. (Demo code: 123456)');
-    _emit(Session(uid: 'demo', phone: _phone ?? ''));
+  Future<void> signIn(String email, String password) async {
+    await _lag();
+    if (_accounts[email] != password) throw const AuthException('invalid-credential', 'That email and password don\'t match an account.');
+    _emit(Session(uid: 'demo-${email.hashCode}', email: email));
   }
 
   @override
-  Future<DriverInvite?> claimDriver() async {
-    await _lag(1200);
-    if ((_phone ?? '').endsWith('0000')) return null;
-    const invite = DriverInvite(fullName: 'Tunde Adebayo', plate: 'OS 452 KJA', vehicleType: 'Shuttle', route: 'Main Gate ⇄ Faculty');
+  Future<void> sendPasswordReset(String email) => _lag(500);
+
+  /// Code `KD7F3Q2X` claims the demo driver; an email starting with `new` has no agent record.
+  static const code = 'KD7F3Q2X';
+
+  @override
+  Future<DriverInvite?> claimDriver(String code) async {
+    await _lag(1000);
     final s = _session!;
-    _emit(Session(uid: s.uid, phone: s.phone, role: 'driver', name: invite.fullName));
+    if (s.email.startsWith('new')) return null;
+    if (code != DemoAuthRepository.code) {
+      throw const AuthException('permission-denied', 'That code doesn\'t match. Check it with the agent who signed you up.');
+    }
+    const invite = DriverInvite(fullName: 'Tunde Adebayo', plate: 'OS 452 KJA', vehicleType: 'Shuttle', route: 'Main Gate ⇄ Faculty');
+    _emit(Session(uid: s.uid, email: s.email, role: 'driver', name: invite.fullName));
     return invite;
   }
 
@@ -52,7 +64,7 @@ class DemoAuthRepository implements AuthRepository {
   Future<void> setPin(String pin) async {
     await _lag();
     final s = _session!;
-    _emit(Session(uid: s.uid, phone: s.phone, role: s.role, name: s.name, pinSet: true));
+    _emit(Session(uid: s.uid, email: s.email, role: s.role, name: s.name, pinSet: true));
   }
 
   @override

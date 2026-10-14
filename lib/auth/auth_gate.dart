@@ -3,8 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme/tokens.dart';
 import 'auth_controller.dart';
 import 'screens/driver_claim_screen.dart';
-import 'screens/otp_screen.dart';
-import 'screens/phone_screen.dart';
+import 'screens/email_screen.dart';
 import 'screens/pin_screen.dart';
 import 'screens/ready_screen.dart';
 import 'screens/splash_screen.dart';
@@ -34,8 +33,8 @@ class AuthGate extends StatelessWidget {
 
   Widget _screen(BuildContext context) {
     final demo = auth.repo.isDemo;
-    // Phone, code, PIN (the profile comes from the agent who onboarded the driver).
-    double step(int n) => n / (3);
+    // Account, onboarding code, PIN (the profile comes from the agent who onboarded the driver).
+    double step(int n) => n / 3;
 
     switch (auth.stage) {
       case Stage.booting:
@@ -43,7 +42,7 @@ class AuthGate extends StatelessWidget {
       case Stage.signedOut:
         return _SignedOutFlow(auth: auth, progress: step);
       case Stage.driverClaim:
-        return DriverClaimScreen(phone: auth.session?.phone ?? '', demo: demo, onClaim: auth.claimDriver, onSignOut: auth.signOut);
+        return DriverClaimScreen(email: auth.session?.email ?? '', progress: step(2), demo: demo, onClaim: auth.claimDriver, onSignOut: auth.signOut);
       case Stage.pin:
         return PinScreen(
           progress: step(3),
@@ -56,8 +55,8 @@ class AuthGate extends StatelessWidget {
         return ReadyScreen(session: auth.session!, demo: demo, onSignOut: auth.signOut);
       case Stage.wrongApp:
         return BlockedScreen(
-          title: 'This number belongs to a rider.',
-          message: 'Students pay with the Konduct app. If you also drive, ask an agent to set up a separate driver number.',
+          title: 'This is a student account.',
+          message: 'Students pay with the Konduct app. If you also drive, ask an agent to register a separate email for your driver account.',
           onSignOut: auth.signOut,
         );
       case Stage.suspended:
@@ -70,9 +69,9 @@ class AuthGate extends StatelessWidget {
   }
 }
 
-enum _Step { welcome, phone, code }
+enum _Step { welcome, account }
 
-/// Welcome → phone → code, with direction-aware slides and system back support.
+/// Welcome → email and password, with direction-aware slides and system back support.
 class _SignedOutFlow extends StatefulWidget {
   const _SignedOutFlow({required this.auth, required this.progress});
   final AuthController auth;
@@ -95,25 +94,16 @@ class _SignedOutFlowState extends State<_SignedOutFlow> {
     final auth = widget.auth;
     final demo = auth.repo.isDemo;
     final child = switch (_step) {
-      _Step.welcome => WelcomeScreen(demo: demo, onStart: () => _go(_Step.phone)),
-      _Step.phone => PhoneScreen(
+      _Step.welcome => WelcomeScreen(demo: demo, onStart: () => _go(_Step.account)),
+      _Step.account => EmailScreen(
           progress: widget.progress(1),
           demo: demo,
-          initial: auth.phone,
+          signUpHint: 'Use the email the Konduct agent registered for you at the park.',
+          initialMode: EmailMode.signIn,
           onBack: () => _go(_Step.welcome),
-          onSend: (e164) async {
-            await auth.sendCode(e164);
-            // On Android the SMS may already have signed us in; the gate moves on by itself.
-            if (mounted && auth.stage == Stage.signedOut) _go(_Step.code);
-          },
-        ),
-      _Step.code => OtpScreen(
-          progress: widget.progress(2),
-          demo: demo,
-          phone: auth.phone ?? '',
-          onBack: () => _go(_Step.phone),
-          onVerify: auth.verifyCode,
-          onResend: () => auth.sendCode(auth.phone!, resend: true),
+          onForgot: auth.sendPasswordReset,
+          // On success the session changes and the gate moves on by itself.
+          onSubmit: (email, password, mode) => mode == EmailMode.signUp ? auth.signUp(email, password) : auth.signIn(email, password),
         ),
     };
 

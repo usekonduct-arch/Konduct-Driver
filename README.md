@@ -20,11 +20,11 @@ On the team PC, use the real SDK at `C:\flutter\src\flutter\bin\flutter.bat` (th
 ## Demo mode
 
 `flutter run --dart-define=KONDUCT_DEMO=true` runs without Firebase on `DemoAuthRepository`:
-the SMS code is always `123456`. A phone number ending in `0000` plays a driver no agent has onboarded; any other number is onboarded as Tunde Adebayo, OS 452 KJA.
+any email signs up, and driver code `KD7F3Q2X` links it to Tunde Adebayo, OS 452 KJA. An email starting with `new` plays a driver no agent has registered.
 
 ## Sign-in flow
 
-Welcome → phone → SMS code → matched to the record an agent created at the park → transaction PIN → ready. With no agent record, the app explains how to get onboarded.
+Welcome → email and password (the email the agent registered) → the agent's one-time 8-character driver code → transaction PIN → ready. With no agent record, the app explains how to get onboarded.
 
 The screen is chosen from the Firebase ID token's custom claims (`role`, `pin`, `status`, `name`),
 which only the backend can set, so a relaunch needs no network call.

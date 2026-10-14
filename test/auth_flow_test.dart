@@ -1,7 +1,7 @@
 import 'dart:io';
 
-import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:konduct_driver/app/bootstrap.dart';
 import 'package:konduct_driver/auth/auth_controller.dart';
@@ -40,20 +40,42 @@ Future<void> loadFonts() async {
   }
 }
 
+void phoneSize(WidgetTester t) {
+  t.view.physicalSize = const Size(1080, 2340);
+  t.view.devicePixelRatio = 2.75;
+  addTearDown(t.view.reset);
+}
+
+/// Welcome -> account screen (opens on "Sign in" for drivers) -> create the account.
+Future<void> createAccount(WidgetTester t, String email, String password) async {
+  await t.tap(find.text('Sign in'));
+  await settle(t);
+  await t.tap(find.text('Create account').first);
+  await settle(t, 600);
+  await t.enterText(find.byType(TextField).at(0), email);
+  await t.enterText(find.byType(TextField).at(1), password);
+  FocusManager.instance.primaryFocus?.unfocus();
+  await settle(t, 400);
+  await t.tap(find.text('Create account').last);
+  await settle(t, 1600);
+}
+
+Future<void> enterCode(WidgetTester t, String code) async {
+  await t.enterText(find.byType(TextField).first, code);
+  FocusManager.instance.primaryFocus?.unfocus();
+  await settle(t, 400);
+  await t.tap(find.text('Link my vehicle'));
+  await settle(t, 1800);
+}
+
 void main() {
   setUpAll(loadFonts);
 
-  group('phone numbers', () {
-    test('normalises Nigerian formats', () {
-      expect(toE164('0803 123 4567'), '+2348031234567');
-      expect(toE164('8031234567'), '+2348031234567');
-      expect(toE164('+234 803 123 4567'), '+2348031234567');
-      expect(toE164('2349031234567'), '+2349031234567');
-    });
-    test('rejects non-mobile numbers', () {
-      expect(toE164('0123456789'), isNull);
-      expect(toE164('080312345'), isNull);
-    });
+  test('email shape check', () {
+    expect(looksLikeEmail('tunde@gmail.com'), isTrue);
+    for (final bad in ['tunde', 'tunde@', '@gmail.com', 'tunde@gmail', '']) {
+      expect(looksLikeEmail(bad), isFalse, reason: bad);
+    }
   });
 
   test('weak PINs are refused', () {
@@ -65,44 +87,22 @@ void main() {
     }
   });
 
-  testWidgets('driver without an agent record is told how to get onboarded', (t) async {
-    t.view.physicalSize = const Size(1080, 2340);
-    t.view.devicePixelRatio = 2.75;
-    addTearDown(t.view.reset);
-
-    final repo = DemoAuthRepository();
-    final auth = AuthController(repo);
-    await t.pumpWidget(KonductApp(auth: auth));
-    await settle(t, 2600);
-    await t.runAsync(() async {
-      await repo.sendCode('+2348030000000');
-      await repo.verifyCode('123456');
-    });
-    await settle(t, 2500);
-    expect(auth.stage, Stage.driverClaim);
-    expect(find.text('We don\'t have you yet.'), findsOneWidget);
-
-    await t.pumpWidget(const SizedBox());
-    await settle(t, 1500);
-  });
-
-  testWidgets('an onboarded driver signs in, sets a PIN and lands on ready', (t) async {
-    t.view.physicalSize = const Size(1080, 2340);
-    t.view.devicePixelRatio = 2.75;
-    addTearDown(t.view.reset);
-
-    final repo = DemoAuthRepository();
-    final auth = AuthController(repo);
+  testWidgets('an onboarded driver links with the agent\'s code, sets a PIN and lands on ready', (t) async {
+    phoneSize(t);
+    final auth = AuthController(DemoAuthRepository());
     await t.pumpWidget(KonductApp(auth: auth));
     await settle(t, 2600);
     expect(auth.stage, Stage.signedOut);
-    expect(find.text('Sign in'), findsOneWidget);
 
-    await t.runAsync(() async {
-      await repo.sendCode('+2348031234567');
-      await repo.verifyCode('123456');
-    });
-    await settle(t, 2600);
+    await createAccount(t, 'tunde@gmail.com', 'drive-safely-9');
+    expect(auth.stage, Stage.driverClaim);
+    expect(find.text('Enter your driver code.'), findsOneWidget);
+
+    await enterCode(t, 'WRONG123');
+    expect(auth.stage, Stage.driverClaim);
+    expect(find.textContaining('doesn\'t match'), findsOneWidget);
+
+    await enterCode(t, DemoAuthRepository.code.toLowerCase()); // typed in lowercase still works
     expect(auth.stage, Stage.pin);
     expect(find.text('Tunde Adebayo'), findsOneWidget);
 
@@ -112,6 +112,42 @@ void main() {
     await settle(t, 2400);
     expect(auth.stage, Stage.ready);
     expect(find.textContaining('Welcome,'), findsOneWidget);
+
+    await t.pumpWidget(const SizedBox());
+    await settle(t, 1500);
+  });
+
+  testWidgets('a driver no agent registered is told how to get onboarded', (t) async {
+    phoneSize(t);
+    final auth = AuthController(DemoAuthRepository());
+    await t.pumpWidget(KonductApp(auth: auth));
+    await settle(t, 2600);
+
+    await createAccount(t, 'newdriver@gmail.com', 'drive-safely-9');
+    await enterCode(t, DemoAuthRepository.code);
+    expect(auth.stage, Stage.driverClaim);
+    expect(find.text('We don\'t have you yet.'), findsOneWidget);
+    expect(find.textContaining('newdriver@gmail.com'), findsWidgets);
+
+    await t.pumpWidget(const SizedBox());
+    await settle(t, 1500);
+  });
+
+  testWidgets('signing in with the wrong password is explained', (t) async {
+    phoneSize(t);
+    final auth = AuthController(DemoAuthRepository());
+    await t.pumpWidget(KonductApp(auth: auth));
+    await settle(t, 2600);
+    await t.tap(find.text('Sign in'));
+    await settle(t);
+    await t.enterText(find.byType(TextField).at(0), 'tunde@gmail.com');
+    await t.enterText(find.byType(TextField).at(1), 'not-my-password');
+    FocusManager.instance.primaryFocus?.unfocus();
+    await settle(t, 400);
+    await t.tap(find.text('Sign in').last);
+    await settle(t, 1600);
+    expect(auth.stage, Stage.signedOut);
+    expect(find.textContaining('don\'t match'), findsOneWidget);
 
     await t.pumpWidget(const SizedBox());
     await settle(t, 1500);

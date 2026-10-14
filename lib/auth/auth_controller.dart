@@ -27,8 +27,8 @@ class AuthController extends ChangeNotifier {
   bool _gotSession = false;
   bool _splashDone = false;
 
-  /// Phone number the last code was sent to.
-  String? phone;
+  /// Email typed on the last sign-in attempt, to pre-fill after a sign-out.
+  String? email;
 
   /// Filled after a driver claims their invite, for the "is this you?" screen.
   DriverInvite? invite;
@@ -57,14 +57,19 @@ class AuthController extends ChangeNotifier {
     return Stage.ready;
   }
 
-  Future<void> sendCode(String e164, {bool resend = false}) async {
-    phone = e164;
-    await repo.sendCode(e164, resend: resend);
+  Future<void> signIn(String email, String password) {
+    this.email = email;
+    return repo.signIn(email, password);
   }
 
-  Future<void> verifyCode(String code) => repo.verifyCode(code);
+  Future<void> signUp(String email, String password) {
+    this.email = email;
+    return repo.signUp(email, password);
+  }
 
-  Future<DriverInvite?> claimDriver() async => invite = await repo.claimDriver();
+  Future<void> sendPasswordReset(String email) => repo.sendPasswordReset(email);
+
+  Future<DriverInvite?> claimDriver(String code) async => invite = await repo.claimDriver(code);
 
   Future<void> setPin(String pin) => repo.setPin(pin);
 
