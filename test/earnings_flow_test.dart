@@ -21,7 +21,7 @@ void main() {
 
   testWidgets('a driver sees what they earned and what is waiting to be paid out', (t) async {
     await openHome(t);
-    expect(find.text('₦3,400'), findsOneWidget);
+    expect(find.text('₦3,400'), findsNWidgets(2)); // waiting to be paid out, and today's card (all of it came in today)
     expect(find.text('Today: ₦3,400'), findsOneWidget); // the undone fare doesn't count
     expect(find.text('13 riders'), findsOneWidget);
     expect(find.textContaining('Undone by rider'), findsOneWidget);
@@ -48,7 +48,7 @@ void main() {
     await openHome(t);
     await t.fling(find.text('TO BE PAID OUT'), const Offset(0, 500), 1200);
     await settle(t, 1500);
-    expect(find.text('₦3,400'), findsOneWidget);
+    expect(find.text('₦3,400'), findsNWidgets(2));
     await t.pumpWidget(const SizedBox());
     await settle(t, 1500);
   });
@@ -146,6 +146,44 @@ void main() {
     await t.tap(find.text('Main Campus park').last);
     await settle(t, 1200);
     expect(find.text('Checked in at Main Campus park'), findsOneWidget);
+    await t.pumpWidget(const SizedBox());
+    await settle(t, 1500);
+  });
+
+  testWidgets('the today card adds up trips and riders; the reports open each day and the month', (t) async {
+    await openHome(t);
+    expect(find.text('TODAY'), findsOneWidget);
+    expect(find.text('17'), findsOneWidget); // riders today: 3 + 1 + 13 (the undone fare left out)
+    await t.tap(find.text('Reports & statements'));
+    await settle(t, 1200);
+    expect(find.text('Your money'), findsOneWidget);
+    expect(find.text('YOU EARNED'), findsOneWidget);
+    expect(find.text('Download statement (PDF)'), findsOneWidget);
+    await t.scrollUntilVisible(find.text('Today'), 300, scrollable: find.byType(Scrollable).first);
+    await t.tap(find.text('Today'));
+    await settle(t, 1200);
+    expect(find.text('Day report'.toUpperCase()), findsOneWidget);
+    expect(find.text('KD-9VN4RC · 13 riders'), findsOneWidget);
+    await t.pumpWidget(const SizedBox());
+    await settle(t, 1500);
+  });
+
+  testWidgets('a driver plays the Wrapped of a month from the reports', (t) async {
+    await openHome(t);
+    await t.tap(find.text('Reports & statements'));
+    await settle(t, 1200);
+    await t.tap(find.bySemanticsLabel('Previous month'));
+    await settle(t, 1200);
+    await t.scrollUntilVisible(find.textContaining('Wrapped'), 300, scrollable: find.byType(Scrollable).first);
+    await t.tap(find.textContaining('Wrapped'));
+    await settle(t, 1500);
+    expect(find.text('KONDUCT WRAPPED'), findsOneWidget);
+    for (var i = 0; i < 10 && find.text('Share my Wrapped').evaluate().isEmpty; i++) {
+      await t.tapAt(const Offset(350, 400));
+      await settle(t, 800);
+    }
+    expect(find.text('Share my Wrapped'), findsOneWidget);
+    expect(find.text('GOLDEN HOUR'), findsOneWidget);
     await t.pumpWidget(const SizedBox());
     await settle(t, 1500);
   });

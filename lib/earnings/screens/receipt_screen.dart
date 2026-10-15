@@ -58,7 +58,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          ReceiptPrinter(slip: _slip, onPrinted: () => setState(() => _printed = true)),
+          ReceiptPrinter(slip: _slip, fileName: 'konduct-receipt-$_reference', onPrinted: () => setState(() => _printed = true)),
           const SizedBox(height: 18),
           AnimatedOpacity(
             opacity: _printed ? 1 : 0,

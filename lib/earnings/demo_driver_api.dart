@@ -74,6 +74,72 @@ class DemoDriverApi implements DriverApi {
   @override
   Stream<List<Payout>> payouts({int limit = 20}) => _live(() => _payouts.take(limit).toList());
 
+  /// Today from the sample fares; the month's earlier days (and last month) made up, the same every run.
+  @override
+  Stream<List<DriverDay>> days(DateTime month) => _live(() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final out = <DriverDay>[];
+    final last = month.year == now.year && month.month == now.month ? now.day - 1 : DateTime(month.year, month.month + 1, 0).day;
+    if (DateTime(month.year, month.month).isAfter(now)) return out;
+    for (var d = 1; d <= last; d++) {
+      if ((d + month.month) % 7 == 0) continue; // a day off a week
+      final trips = 6 + (d * 5 + month.month) % 7;
+      final riders = trips * 6;
+      out.add(
+        DriverDay(
+          day: DateTime(month.year, month.month, d),
+          fares: riders - trips,
+          riders: riders,
+          trips: trips,
+          grossKobo: riders * 20000,
+          refundsKobo: d % 11 == 0 ? 20000 : 0,
+          byHour: {7: riders * 6000, 8: riders * 5000, 13: riders * 3000, 17: riders * 6000},
+          routes: {'Shasha park → Main gate': trips - 2, 'Main gate → Hostels': 2},
+        ),
+      );
+    }
+    if (month.year == now.year && month.month == now.month) {
+      final paid = _payments.where((p) => !p.undone && !p.at.isBefore(today)).toList();
+      if (paid.isNotEmpty) {
+        out.add(
+          DriverDay(
+            day: today,
+            fares: paid.length,
+            riders: paid.fold(0, (t, p) => t + p.riders),
+            trips: paid.length,
+            grossKobo: paid.fold(0, (t, p) => t + p.amountKobo),
+            byHour: {for (final p in paid) p.at.hour: paid.where((x) => x.at.hour == p.at.hour).fold(0, (t, x) => t + x.amountKobo)},
+            routes: {'Shasha park → Main gate': paid.length},
+          ),
+        );
+      }
+    }
+    return out;
+  });
+
+  @override
+  Future<List<Payment>> paymentsOn(DateTime day) async {
+    await _lag(300);
+    final start = DateTime(day.year, day.month, day.day);
+    final mine = _payments.where((p) => !p.at.isBefore(start) && p.at.isBefore(start.add(const Duration(days: 1)))).toList();
+    if (mine.isNotEmpty || start == DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day)) return mine;
+    return [
+      for (var i = 0; i < 8; i++)
+        Payment(id: 'fare_old_$i', amountKobo: 20000 * (1 + i % 3), riders: 1 + i % 3, reference: 'KD-OLD$i', status: 'paid', at: start.add(Duration(hours: 7 + i, minutes: i * 7))),
+    ].reversed.toList();
+  }
+
+  @override
+  Future<List<Payout>> payoutsIn(DateTime month) async {
+    await _lag(300);
+    return [
+      for (final d in [7, 14, 21])
+        if (DateTime(month.year, month.month, d).isBefore(DateTime.now()))
+          Payout(id: 'po_${month.month}_$d', amountKobo: 3500000, status: 'paid', at: DateTime(month.year, month.month, d, 21, 30), last4: '4821', trigger: 'daily'),
+    ].reversed.toList();
+  }
+
   @override
   Stream<BusLoad?> busLoad() => _live(
     () =>

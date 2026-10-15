@@ -117,7 +117,7 @@ void main() {
     await t.tap(find.text('See my earnings'));
     await settle(t, 1500);
     expect(find.text('TO BE PAID OUT'), findsOneWidget);
-    expect(find.text('₦3,400'), findsOneWidget);
+    expect(find.text('₦3,400'), findsNWidgets(2)); // waiting to be paid out, and earned today
 
     await t.pumpWidget(const SizedBox());
     await settle(t, 1500);

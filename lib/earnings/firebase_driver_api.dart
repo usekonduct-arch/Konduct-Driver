@@ -70,17 +70,7 @@ class FirebaseDriverApi implements DriverApi {
       .limit(limit)
       .snapshots()
       .map(
-        (q) => q.docs.map((d) {
-          final m = d.data();
-          return Payment(
-            id: d.id,
-            amountKobo: (m['amountKobo'] as num?)?.toInt() ?? 0,
-            riders: (m['riders'] as num?)?.toInt() ?? 1,
-            reference: m['reference'] as String? ?? '',
-            status: m['status'] as String? ?? 'paid',
-            at: DateTime.fromMillisecondsSinceEpoch((m['atMs'] as num?)?.toInt() ?? 0),
-          );
-        }).toList(),
+        (q) => q.docs.map(_payment).toList(),
       );
 
   @override
@@ -91,17 +81,7 @@ class FirebaseDriverApi implements DriverApi {
       .limit(limit)
       .snapshots()
       .map(
-        (q) => q.docs.map((d) {
-          final m = d.data();
-          return Payout(
-            id: d.id,
-            amountKobo: (m['amountKobo'] as num?)?.toInt() ?? 0,
-            status: m['status'] as String? ?? 'reserved',
-            at: (m['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-            last4: m['accountLast4'] as String? ?? '',
-            trigger: m['trigger'] as String? ?? 'daily',
-          );
-        }).toList(),
+        (q) => q.docs.map(_payout).toList(),
       );
 
   @override
@@ -165,18 +145,108 @@ class FirebaseDriverApi implements DriverApi {
     return c.stream;
   }
 
+  Payment _payment(QueryDocumentSnapshot<Map<String, dynamic>> d) {
+    final m = d.data();
+    return Payment(
+      id: d.id,
+      amountKobo: (m['amountKobo'] as num?)?.toInt() ?? 0,
+      riders: (m['riders'] as num?)?.toInt() ?? 1,
+      reference: m['reference'] as String? ?? '',
+      status: m['status'] as String? ?? 'paid',
+      at: DateTime.fromMillisecondsSinceEpoch((m['atMs'] as num?)?.toInt() ?? 0),
+    );
+  }
+
+  Payout _payout(QueryDocumentSnapshot<Map<String, dynamic>> d) {
+    final m = d.data();
+    return Payout(
+      id: d.id,
+      amountKobo: (m['amountKobo'] as num?)?.toInt() ?? 0,
+      status: m['status'] as String? ?? 'reserved',
+      at: (m['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      last4: m['accountLast4'] as String? ?? '',
+      trigger: m['trigger'] as String? ?? 'daily',
+    );
+  }
+
+  static String _ym(DateTime m) => '${m.year}-${m.month.toString().padLeft(2, '0')}';
+
+  @override
+  Stream<List<DriverDay>> days(DateTime month) => keepListening(
+    () => _db
+        .collection('driverDays')
+        .where('uid', isEqualTo: _uid)
+        .where('month', isEqualTo: _ym(month))
+        .snapshots()
+        .map((q) => q.docs.map((d) => DriverDay.fromMap(d.data())).toList()),
+  );
+
+  @override
+  Future<List<Payment>> paymentsOn(DateTime day) async {
+    final start = DateTime(day.year, day.month, day.day);
+    final q = await _db
+        .collection('driverFeed/$_uid/items')
+        .where('atMs', isGreaterThanOrEqualTo: start.millisecondsSinceEpoch)
+        .where('atMs', isLessThan: start.add(const Duration(days: 1)).millisecondsSinceEpoch)
+        .orderBy('atMs', descending: true)
+        .limit(1000)
+        .get();
+    return q.docs.map(_payment).toList();
+  }
+
+  @override
+  Future<List<Payout>> payoutsIn(DateTime month) async {
+    final q = await _db
+        .collection('payouts')
+        .where('uid', isEqualTo: _uid)
+        .where('createdAt', isGreaterThanOrEqualTo: Timestamp.fromDate(DateTime(month.year, month.month)))
+        .where('createdAt', isLessThan: Timestamp.fromDate(DateTime(month.year, month.month + 1)))
+        .orderBy('createdAt', descending: true)
+        .get();
+    return q.docs.map(_payout).toList();
+  }
+
   @override
   Future<void> newTrip() => _call('driverNewTrip', {});
 
   @override
   Future<void> setPark(String? parkId) => _call('driverSetPark', {'parkId': parkId});
 
+  /// Places to pick a trip route between: the landmarks, and every park with a map pin.
   @override
-  Stream<List<Landmark>> landmarks() => _db
-      .collection('landmarks')
-      .where('active', isEqualTo: true)
-      .snapshots()
-      .map((q) => q.docs.map((d) => Landmark(d.id, d.data()['name'] as String? ?? d.id)).toList()..sort((a, b) => a.name.compareTo(b.name)));
+  Stream<List<Landmark>> landmarks() => keepListening(() {
+    late StreamController<List<Landmark>> c;
+    final subs = <StreamSubscription<QuerySnapshot<Map<String, dynamic>>>>[];
+    List<Landmark>? marks, parks;
+    void emit() {
+      if (marks == null || parks == null) return;
+      final names = {for (final l in marks!) l.name.toLowerCase()};
+      c.add([...marks!, ...parks!.where((p) => !names.contains(p.name.toLowerCase()))]..sort((a, b) => a.name.compareTo(b.name)));
+    }
+
+    c = StreamController<List<Landmark>>(
+      onListen: () {
+        subs.add(
+          _db.collection('landmarks').where('active', isEqualTo: true).snapshots().listen((q) {
+            marks = q.docs.map((d) => Landmark(d.id, d.data()['name'] as String? ?? d.id)).toList();
+            emit();
+          }, onError: c.addError),
+        );
+        subs.add(
+          _db.collection('parks').where('active', isEqualTo: true).snapshots().listen((q) {
+            parks = q.docs.where((d) => d.data()['lat'] != null && d.data()['lng'] != null).map((d) => Landmark(d.id, d.data()['name'] as String? ?? d.id)).toList();
+            emit();
+          }, onError: c.addError),
+        );
+      },
+      onCancel: () async {
+        for (final s in subs) {
+          await s.cancel();
+        }
+      },
+    );
+    return c.stream;
+  });
 
   @override
   Future<TripRoute> setRoute({required String fromId, required String toId, required bool newTrip}) async =>

@@ -13,9 +13,11 @@ import '../models.dart';
 import 'bank_account_screen.dart';
 import 'payout_screen.dart';
 import 'receipt_screen.dart';
+import 'reports_screen.dart';
 import '../../messages/messages_ui.dart';
 import 'settings_screen.dart';
 import '../../support/support_screens.dart';
+import '../../ui/wrapped.dart';
 
 /// The driver's home: money waiting to be paid out, where it goes, today's fares and payouts.
 class HomeScreen extends StatefulWidget {
@@ -39,6 +41,8 @@ class _HomeScreenState extends State<HomeScreen> {
   late Stream<List<Landmark>> _landmarks;
   late Stream<DriverRating> _rating;
   late Stream<List<Park>> _parks;
+  late Stream<List<DriverDay>> _days;
+  Future<bool> _wrappedReady = Future.value(false);
   // A second listener for the check-in picker on the trip card.
   late Stream<List<Park>> _busParks;
 
@@ -62,6 +66,12 @@ class _HomeScreenState extends State<HomeScreen> {
     _landmarks = api.landmarks();
     _rating = api.rating();
     _parks = api.parks();
+    final now = DateTime.now();
+    _days = api.days(DateTime(now.year, now.month));
+    // The first week of a month: last month's Wrapped, if there were fares to wrap.
+    if (now.day <= 7) {
+      _wrappedReady = api.days(DateTime(now.year, now.month - 1)).first.then((d) => d.any((x) => x.fares > 0), onError: (_) => false);
+    }
     _busParks = api.parks();
   }
 
@@ -156,6 +166,18 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
                       ),
+                    ),
+                    const SizedBox(height: 14),
+                    StreamBuilder<List<DriverDay>>(
+                      stream: _days,
+                      builder: (_, d) => TodayCard(
+                        days: d.data ?? const [],
+                        onOpen: () => pushScreen(context, ReportsScreen(api: api, driverName: widget.session.name ?? '')),
+                      ),
+                    ),
+                    FutureBuilder<bool>(
+                      future: _wrappedReady,
+                      builder: (_, w) => w.data == true ? Padding(padding: const EdgeInsets.only(top: 14), child: _WrappedBanner(api: api, firstName: widget.session.firstName)) : const SizedBox.shrink(),
                     ),
                     AdCarousel(api: api.messages, actions: _actions, padding: const EdgeInsets.only(top: 14)),
                     StreamBuilder<BusLoad?>(
@@ -438,7 +460,7 @@ class _SeatsCardState extends State<_SeatsCard> {
   Future<void> _route({required bool newTrip}) async {
     if (widget.landmarks.length < 2) {
       if (newTrip) return _plainNewTrip();
-      return showSnack(context, 'Ask a Konduct admin to add the places buses go.');
+      return showSnack(context, 'No places to pick yet. A Konduct admin adds them in the console under Landmarks (parks with a map pin count too).');
     }
     final r = widget.load.route;
     final choice = await showModalBottomSheet<(String, String)>(
@@ -874,6 +896,46 @@ class _Parks extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+/// The first week of a month: last month's Wrapped is ready.
+class _WrappedBanner extends StatelessWidget {
+  const _WrappedBanner({required this.api, required this.firstName});
+  final DriverApi api;
+  final String firstName;
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final last = DateTime(now.year, now.month - 1);
+    return Pressable(
+      scale: 0.98,
+      onTap: () => openDriverWrapped(context, api, last, firstName: firstName),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(18, 16, 16, 16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(22),
+          gradient: const LinearGradient(colors: [K.yellow, K.yellowDeep], begin: Alignment.topLeft, end: Alignment.bottomRight),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.auto_awesome_rounded, color: K.ink, size: 28),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Your ${monthName(last)} Wrapped is here', style: KText.body(K.ink).copyWith(fontWeight: FontWeight.w800)),
+                  Text('What you earned, your best day and more. Tap to play.', style: KText.small(K.ink)),
+                ],
+              ),
+            ),
+            const Icon(Icons.play_circle_fill_rounded, color: K.ink, size: 30),
+          ],
+        ),
+      ),
     );
   }
 }

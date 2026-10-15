@@ -28,6 +28,15 @@ abstract class DriverApi {
   /// Payouts to the bank, newest first.
   Stream<List<Payout>> payouts({int limit = 20});
 
+  /// Each day's figures in one calendar month (only days with something on them).
+  Stream<List<DriverDay>> days(DateTime month);
+
+  /// Every fare on one day, newest first.
+  Future<List<Payment>> paymentsOn(DateTime day);
+
+  /// Payouts started in one calendar month, newest first.
+  Future<List<Payout>> payoutsIn(DateTime month);
+
   /// This driver's bus and the seats paid by scan on its current trip; null for a bike or before
   /// a vehicle is linked.
   Stream<BusLoad?> busLoad();

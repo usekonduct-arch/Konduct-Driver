@@ -197,3 +197,87 @@ class DriverRating {
   final int sum, count;
   double get average => count == 0 ? 0 : sum / count;
 }
+
+/// driverDays/{uid}_{day}: one day's figures, kept by the server with every fare and refund.
+class DriverDay {
+  const DriverDay({
+    required this.day,
+    this.fares = 0,
+    this.riders = 0,
+    this.trips = 0,
+    this.grossKobo = 0,
+    this.refundsKobo = 0,
+    this.byHour = const {},
+    this.routes = const {},
+  });
+
+  /// Midnight of the day, local time.
+  final DateTime day;
+  final int fares, riders, trips, grossKobo, refundsKobo;
+
+  /// Money in by hour of the day (0-23).
+  final Map<int, int> byHour;
+
+  /// Fares by trip route.
+  final Map<String, int> routes;
+
+  /// What the driver keeps: fares less refunds they covered.
+  int get netKobo => grossKobo - refundsKobo;
+
+  factory DriverDay.fromMap(Map<String, dynamic> m) {
+    final d = DateTime.tryParse('${m['day']}') ?? DateTime(1970);
+    Map<String, int> ints(Object? v) => v is Map ? v.map((k, x) => MapEntry('$k', (x as num?)?.toInt() ?? 0)) : const {};
+    return DriverDay(
+      day: DateTime(d.year, d.month, d.day),
+      fares: (m['fares'] as num?)?.toInt() ?? 0,
+      riders: (m['riders'] as num?)?.toInt() ?? 0,
+      trips: (m['trips'] as num?)?.toInt() ?? 0,
+      grossKobo: (m['grossKobo'] as num?)?.toInt() ?? 0,
+      refundsKobo: (m['refundsKobo'] as num?)?.toInt() ?? 0,
+      byHour: ints(m['byHour']).map((k, v) => MapEntry(int.tryParse(k) ?? 0, v)),
+      routes: ints(m['routes']),
+    );
+  }
+}
+
+/// A month of [DriverDay]s added up, for the report, the statement and Wrapped.
+class DriverMonth {
+  DriverMonth(this.month, List<DriverDay> days) : days = [...days]..sort((a, b) => a.day.compareTo(b.day));
+  final DateTime month;
+  final List<DriverDay> days;
+
+  int _sum(int Function(DriverDay) f) => days.fold(0, (t, d) => t + f(d));
+  int get grossKobo => _sum((d) => d.grossKobo);
+  int get refundsKobo => _sum((d) => d.refundsKobo);
+  int get netKobo => grossKobo - refundsKobo;
+  int get fares => _sum((d) => d.fares);
+  int get riders => _sum((d) => d.riders);
+  int get trips => _sum((d) => d.trips);
+
+  /// Days with at least one fare.
+  List<DriverDay> get worked => days.where((d) => d.fares > 0).toList();
+  DriverDay? get bestDay => worked.isEmpty ? null : worked.reduce((a, b) => b.netKobo > a.netKobo ? b : a);
+  /// Rounded to whole naira.
+  int get averagePerDayKobo => worked.isEmpty ? 0 : (netKobo / worked.length / 100).round() * 100;
+
+  Map<int, int> get byHour {
+    final out = <int, int>{};
+    for (final d in days) {
+      d.byHour.forEach((h, k) => out[h] = (out[h] ?? 0) + k);
+    }
+    return out;
+  }
+
+  /// The hour that brought in the most money, if any.
+  int? get busiestHour => byHour.isEmpty ? null : byHour.entries.reduce((a, b) => b.value > a.value ? b : a).key;
+
+  /// Routes by fares, most first.
+  List<MapEntry<String, int>> get topRoutes {
+    final out = <String, int>{};
+    for (final d in days) {
+      d.routes.forEach((r, n) => out[r] = (out[r] ?? 0) + n);
+    }
+    return out.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+  }
+}
+
