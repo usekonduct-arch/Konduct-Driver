@@ -121,6 +121,8 @@ class FirebaseDriverApi implements DriverApi {
       }
       final load = v['load'] is Map ? Map<String, dynamic>.from(v['load'] as Map) : const <String, dynamic>{};
       final ends = (load['expiresAtMs'] as num?)?.toInt();
+      final park = v['park'] is Map ? Map<String, dynamic>.from(v['park'] as Map) : null;
+      final parkUntil = (park?['expiresAtMs'] as num?)?.toInt();
       c.add(
         BusLoad(
           plate: v['plate'] as String? ?? '',
@@ -128,6 +130,9 @@ class FirebaseDriverApi implements DriverApi {
           taken: (load['taken'] as num?)?.toInt() ?? 0,
           tripEndsAt: ends == null ? null : DateTime.fromMillisecondsSinceEpoch(ends),
           route: TripRoute.fromMap(v['currentRoute']),
+          parkId: park?['id'] as String?,
+          parkName: park?['name'] as String?,
+          parkUntil: parkUntil == null ? null : DateTime.fromMillisecondsSinceEpoch(parkUntil),
         ),
       );
     }
@@ -162,6 +167,9 @@ class FirebaseDriverApi implements DriverApi {
 
   @override
   Future<void> newTrip() => _call('driverNewTrip', {});
+
+  @override
+  Future<void> setPark(String? parkId) => _call('driverSetPark', {'parkId': parkId});
 
   @override
   Stream<List<Landmark>> landmarks() => _db

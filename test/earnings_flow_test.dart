@@ -109,6 +109,8 @@ void main() {
     expect(find.text('About 4 free'), findsOneWidget);
 
     // Back the other way: the sheet offers the reverse route, and the seats clear.
+    await t.ensureVisible(find.text('New trip · bus emptied'));
+    await settle(t, 300);
     await t.tap(find.text('New trip · bus emptied'));
     await settle(t, 900);
     expect(find.text('Start a new trip'), findsOneWidget);
@@ -128,6 +130,22 @@ void main() {
     await t.scrollUntilVisible(find.text('Shasha park'), 200, scrollable: find.byType(Scrollable).first);
     expect(find.text('BUSES AT THE PARKS'), findsOneWidget);
     expect(find.text('Main Campus park'), findsOneWidget);
+    await t.pumpWidget(const SizedBox());
+    await settle(t, 1500);
+  });
+
+  testWidgets('a driver checks the bus out of a park and into another', (t) async {
+    await openHome(t);
+    expect(find.text('Checked in at Shasha park'), findsOneWidget);
+    await t.tap(find.text('Leaving'));
+    await settle(t, 900);
+    expect(find.text('Not checked in at a park'), findsOneWidget);
+    await t.tap(find.text('Check in'));
+    await settle(t, 900);
+    expect(find.text('Which park are you at?'), findsOneWidget);
+    await t.tap(find.text('Main Campus park').last);
+    await settle(t, 1200);
+    expect(find.text('Checked in at Main Campus park'), findsOneWidget);
     await t.pumpWidget(const SizedBox());
     await settle(t, 1500);
   });

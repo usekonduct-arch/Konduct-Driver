@@ -39,6 +39,8 @@ class _HomeScreenState extends State<HomeScreen> {
   late Stream<List<Landmark>> _landmarks;
   late Stream<DriverRating> _rating;
   late Stream<List<Park>> _parks;
+  // A second listener for the check-in picker on the trip card.
+  late Stream<List<Park>> _busParks;
 
   DriverApi get api => widget.api;
 
@@ -60,6 +62,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _landmarks = api.landmarks();
     _rating = api.rating();
     _parks = api.parks();
+    _busParks = api.parks();
   }
 
   /// Pull to refresh.
@@ -161,9 +164,12 @@ class _HomeScreenState extends State<HomeScreen> {
                           ? const SizedBox.shrink()
                           : StreamBuilder<List<Landmark>>(
                               stream: _landmarks,
-                              builder: (_, places) => Padding(
-                                padding: const EdgeInsets.only(top: 14),
-                                child: _SeatsCard(load: s.data!, api: api, landmarks: places.data ?? const []),
+                              builder: (_, places) => StreamBuilder<List<Park>>(
+                                stream: _busParks,
+                                builder: (_, parks) => Padding(
+                                  padding: const EdgeInsets.only(top: 14),
+                                  child: _SeatsCard(load: s.data!, api: api, landmarks: places.data ?? const [], parks: parks.data ?? const []),
+                                ),
                               ),
                             ),
                     ),
@@ -403,12 +409,14 @@ class _Note extends StatelessWidget {
   );
 }
 
-/// The trip route, the seats paid by scan on this trip, and "New trip" for when the bus has emptied.
+/// The park the bus is checked in at, the trip route, the seats paid by scan on this trip, and
+/// "New trip" for when the bus has emptied. Riders see all of it on their bus board.
 class _SeatsCard extends StatefulWidget {
-  const _SeatsCard({required this.load, required this.api, required this.landmarks});
+  const _SeatsCard({required this.load, required this.api, required this.landmarks, required this.parks});
   final BusLoad load;
   final DriverApi api;
   final List<Landmark> landmarks;
+  final List<Park> parks;
 
   @override
   State<_SeatsCard> createState() => _SeatsCardState();
@@ -474,6 +482,27 @@ class _SeatsCardState extends State<_SeatsCard> {
     });
   }
 
+  /// Check in at a park (riders waiting there see the bus), or tell them it's leaving.
+  Future<void> _park() async {
+    if (widget.load.atParkAt(DateTime.now())) {
+      return _run(() async {
+        await widget.api.setPark(null);
+        return 'Checked out. Riders see you on the road.';
+      });
+    }
+    if (widget.parks.isEmpty) return showSnack(context, 'Ask a Konduct admin to add the parks.');
+    final park = await showModalBottomSheet<Park>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _ParkSheet(parks: widget.parks),
+    );
+    if (park == null || !mounted) return;
+    await _run(() async {
+      await widget.api.setPark(park.id);
+      return 'Checked in at ${park.name}. Riders there can see your bus and seats.';
+    });
+  }
+
   Future<void> _run(Future<String> Function() action) async {
     setState(() => _busy = true);
     try {
@@ -493,6 +522,7 @@ class _SeatsCardState extends State<_SeatsCard> {
     final free = l.capacity - taken;
     final full = free == 0;
     final route = l.route;
+    final atPark = l.atParkAt(DateTime.now());
     return Panel(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -529,6 +559,26 @@ class _SeatsCardState extends State<_SeatsCard> {
                 child: Padding(
                   padding: const EdgeInsets.all(6),
                   child: Text(route == null ? 'Set' : 'Change', style: KText.small(K.yellow).copyWith(decoration: TextDecoration.underline)),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Icon(Icons.local_parking_rounded, color: atPark ? K.go : K.muteDark, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  atPark ? 'Checked in at ${l.parkName}' : 'Not checked in at a park',
+                  style: KText.body(atPark ? K.paper : K.muteDark).copyWith(fontWeight: FontWeight.w700),
+                ),
+              ),
+              Pressable(
+                onTap: _busy ? null : _park,
+                child: Padding(
+                  padding: const EdgeInsets.all(6),
+                  child: Text(atPark ? 'Leaving' : 'Check in', style: KText.small(K.yellow).copyWith(decoration: TextDecoration.underline)),
                 ),
               ),
             ],
@@ -704,6 +754,69 @@ class _RouteSheetState extends State<_RouteSheet> {
       ),
     );
   }
+}
+
+/// Which park the bus has just arrived at.
+class _ParkSheet extends StatelessWidget {
+  const _ParkSheet({required this.parks});
+  final List<Park> parks;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    decoration: const BoxDecoration(
+      color: K.ink2,
+      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+    ),
+    padding: EdgeInsets.fromLTRB(20, 12, 20, 16 + MediaQuery.paddingOf(context).bottom),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Center(
+          child: Container(
+            width: 44,
+            height: 5,
+            decoration: BoxDecoration(color: const Color(0xFF2A313C), borderRadius: BorderRadius.circular(3)),
+          ),
+        ),
+        const SizedBox(height: 18),
+        Text('Which park are you at?', style: KText.h3(K.paper)),
+        const SizedBox(height: 4),
+        Text('Riders waiting there see your bus, where it\'s going and the free seats. Tap "Leaving" when you go.', style: KText.small(K.muteDark)),
+        const SizedBox(height: 14),
+        for (final park in parks)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Pressable(
+              scale: 0.98,
+              onTap: () => Navigator.of(context).pop(park),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFF2A313C), width: 1.5),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.local_parking_rounded, color: K.yellow),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(park.name, style: KText.body(K.paper).copyWith(fontWeight: FontWeight.w700)),
+                          Text(park.location, style: KText.small(K.muteDark)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+      ],
+    ),
+  );
 }
 
 /// How many buses staff last counted at each park.

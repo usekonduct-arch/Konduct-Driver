@@ -28,6 +28,7 @@ class DemoDriverApi implements DriverApi {
   final _payouts = <Payout>[];
   BankAccount? _active, _pending;
   var _seatsTaken = 3;
+  String? _parkId = 'shasha';
   TripRoute? _route = const TripRoute(fromId: 'shasha', fromName: 'Shasha park', toId: 'main-gate', toName: 'Main gate', etaMin: 12);
   static const _places = [
     Landmark('hostels', 'Hostels'),
@@ -76,13 +77,29 @@ class DemoDriverApi implements DriverApi {
   @override
   Stream<BusLoad?> busLoad() => _live(
     () =>
-        BusLoad(plate: 'OS 482 KJA', capacity: defaultBusSeats, taken: _seatsTaken, tripEndsAt: DateTime.now().add(const Duration(minutes: 12)), route: _route),
+        BusLoad(
+          plate: 'OS 482 KJA',
+          capacity: defaultBusSeats,
+          taken: _seatsTaken,
+          tripEndsAt: DateTime.now().add(const Duration(minutes: 12)),
+          route: _route,
+          parkId: _parkId,
+          parkName: _parkId == null ? null : (_parkId == 'shasha' ? 'Shasha park' : 'Main Campus park'),
+          parkUntil: _parkId == null ? null : DateTime.now().add(const Duration(hours: 2)),
+        ),
   );
 
   @override
   Future<void> newTrip() async {
     await _lag(400);
     _seatsTaken = 0;
+    _touch();
+  }
+
+  @override
+  Future<void> setPark(String? parkId) async {
+    await _lag(400);
+    _parkId = parkId;
     _touch();
   }
 

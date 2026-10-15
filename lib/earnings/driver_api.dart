@@ -35,6 +35,9 @@ abstract class DriverApi {
   /// The bus has emptied: clears the seats paid by scan so the next riders can pay.
   Future<void> newTrip();
 
+  /// Checks the bus in at a park (riders see it on their board there), or out of it with null.
+  Future<void> setPark(String? parkId);
+
   /// Places a trip can go between, by name.
   Stream<List<Landmark>> landmarks();
 

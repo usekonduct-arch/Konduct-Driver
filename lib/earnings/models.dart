@@ -127,9 +127,16 @@ const defaultBusSeats = 7;
 
 /// The driver's bus: seats paid by scan on the current trip (vehicles/{id}.load).
 class BusLoad {
-  const BusLoad({required this.plate, required this.capacity, required this.taken, this.tripEndsAt, this.route});
+  const BusLoad({required this.plate, required this.capacity, required this.taken, this.tripEndsAt, this.route, this.parkId, this.parkName, this.parkUntil});
   final String plate;
   final int capacity, taken;
+
+  /// The park the bus is checked in at (riders see it there), and when that lapses on its own.
+  final String? parkId, parkName;
+  final DateTime? parkUntil;
+
+  /// Checked in at a park at [now].
+  bool atParkAt(DateTime now) => parkId != null && parkUntil != null && now.isBefore(parkUntil!);
 
   /// Where the bus is going on this trip; null until the driver (or staff) sets it.
   final TripRoute? route;
