@@ -1,5 +1,6 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 
+import '../l10n/text.dart';
 import '../earnings/driver_api.dart';
 import '../earnings/screens/home_screen.dart';
 import '../theme/tokens.dart';

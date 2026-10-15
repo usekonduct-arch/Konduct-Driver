@@ -1,8 +1,13 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
 
+import '../../l10n/l10n.dart';
+import '../../app/current.dart';
+import '../../app/home_widget_sync.dart';
+import '../../app/intents.dart';
+import '../../l10n/text.dart';
 import '../../auth/auth_repository.dart';
 import '../../theme/tokens.dart';
 import '../../ui/flow_scaffold.dart';
@@ -10,6 +15,8 @@ import '../../ui/kit.dart';
 import '../driver_api.dart';
 import '../earnings_ui.dart';
 import '../models.dart';
+import '../shift.dart';
+import 'feedback_screen.dart';
 import 'bank_account_screen.dart';
 import 'payout_screen.dart';
 import 'receipt_screen.dart';
@@ -48,11 +55,54 @@ class _HomeScreenState extends State<HomeScreen> {
 
   DriverApi get api => widget.api;
 
+  /// The latest month of daily figures, for the shift summary and the widget.
+  List<DriverDay> _lastDays = const [];
+  int? _goal;
+  int? _widgetToday;
+
   @override
   void initState() {
     super.initState();
+    Current.uid = widget.session.uid;
     _listen();
+    DailyGoal.load().then((g) {
+      if (mounted) setState(() => _goal = g);
+    });
+    // Shortcuts, links and widget taps wait here until the home screen is open.
+    AppIntents.instance.pending.addListener(_openPending);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _openPending());
   }
+
+  @override
+  void dispose() {
+    AppIntents.instance.pending.removeListener(_openPending);
+    Current.uid = '';
+    HomeWidgetSync.update();
+    super.dispose();
+  }
+
+  void _openPending() {
+    final link = AppIntents.instance.pending.value;
+    if (link == null || !mounted) return;
+    AppIntents.instance.pending.value = null;
+    Navigator.of(context).popUntil((r) => r.isFirst);
+    openLink(context, link, _actions);
+  }
+
+  DriverDay get _today {
+    final n = DateTime.now();
+    final d = DateTime(n.year, n.month, n.day);
+    return _lastDays.where((x) => x.day == d).firstOrNull ?? DriverDay(day: d);
+  }
+
+  Future<void> _setGoal() async {
+    final g = await pickGoal(context, _goal);
+    if (g == null) return;
+    await DailyGoal.save(g == 0 ? null : g);
+    if (mounted) setState(() => _goal = g == 0 ? null : g);
+  }
+
+  void _endShift() => showShiftSummary(context, _today, goal: _goal);
 
   /// Fresh subscriptions to everything on the page. Resubscribing also revives a listener the
   /// connection dropped.
@@ -85,11 +135,14 @@ class _HomeScreenState extends State<HomeScreen> {
   void _openPayment(Payment p) => pushScreen(context, ReceiptScreen(api: api, payment: p));
   void _openPayout(Payout p) => pushScreen(context, ReceiptScreen(api: api, payout: p));
 
-  /// Screens an ad or message can open with an app: link.
+  /// Screens an ad, message, link, shortcut or widget can open with an app: link.
   late final AppActions _actions = {
-    'payout': () => pushScreen(context, PayoutScreen(api: api)),
-    'bank': () => pushScreen(context, BankAccountScreen(api: api)),
-    'account': () => pushScreen(context, SettingsScreen(api: api, session: widget.session, onSignOut: widget.onSignOut)),
+    'payout': (_) => pushScreen(context, PayoutScreen(api: api)),
+    'bank': (_) => pushScreen(context, BankAccountScreen(api: api)),
+    'account': (_) => pushScreen(context, SettingsScreen(api: api, session: widget.session, onSignOut: widget.onSignOut)),
+    'reports': (_) => pushScreen(context, ReportsScreen(api: api, driverName: widget.session.name ?? '')),
+    'feedback': (_) => pushScreen(context, FeedbackScreen(api: api)),
+    'shift': (_) => _endShift(),
   };
 
   @override
@@ -126,12 +179,15 @@ class _HomeScreenState extends State<HomeScreen> {
                               Text('Hi, $name', style: KText.h3(K.paper)),
                               StreamBuilder<DriverRating>(
                                 stream: _rating,
-                                builder: (_, r) => Text(
-                                  (r.data?.count ?? 0) == 0
-                                      ? 'Drive safe. Every fare lands here.'
-                                      : '★ ${r.data!.average.toStringAsFixed(1)} from ${r.data!.count} ${r.data!.count == 1 ? 'rating' : 'ratings'}',
-                                  style: KText.small(K.muteDark),
-                                ),
+                                builder: (_, r) => (r.data?.count ?? 0) == 0
+                                    ? Text('Drive safe. Every fare lands here.', style: KText.small(K.muteDark))
+                                    : Pressable(
+                                        onTap: () => pushScreen(context, FeedbackScreen(api: api)),
+                                        child: Text(
+                                          '★ ${r.data!.average.toStringAsFixed(1)} from ${r.data!.count} ${r.data!.count == 1 ? 'rating' : 'ratings'}',
+                                          style: KText.small(K.muteDark).copyWith(decoration: TextDecoration.underline),
+                                        ),
+                                      ),
                               ),
                             ],
                           ),
@@ -170,10 +226,23 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(height: 14),
                     StreamBuilder<List<DriverDay>>(
                       stream: _days,
-                      builder: (_, d) => TodayCard(
-                        days: d.data ?? const [],
-                        onOpen: () => pushScreen(context, ReportsScreen(api: api, driverName: widget.session.name ?? '')),
-                      ),
+                      builder: (_, d) {
+                        if (d.data != null) {
+                          _lastDays = d.data!;
+                          final today = _today.netKobo;
+                          if (today != _widgetToday) {
+                            _widgetToday = today;
+                            HomeWidgetSync.update(balanceText: naira(today));
+                          }
+                        }
+                        return TodayCard(
+                          days: d.data ?? const [],
+                          goal: _goal,
+                          onGoal: _setGoal,
+                          onEndShift: _endShift,
+                          onOpen: () => pushScreen(context, ReportsScreen(api: api, driverName: widget.session.name ?? '')),
+                        );
+                      },
                     ),
                     FutureBuilder<bool>(
                       future: _wrappedReady,
@@ -860,7 +929,7 @@ class _Parks extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Semantics(
-              label: '${park.name}, ${park.busCount} ${park.busCount == 1 ? 'bus' : 'buses'}',
+              label: tr('${park.name}, ${park.busCount} ${park.busCount == 1 ? 'bus' : 'buses'}'),
               excludeSemantics: true,
               child: Row(
                 children: [

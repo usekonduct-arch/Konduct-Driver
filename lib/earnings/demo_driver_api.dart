@@ -187,6 +187,24 @@ class DemoDriverApi implements DriverApi {
   Stream<DriverRating> rating() => Stream.value(const DriverRating(sum: 106, count: 23));
 
   @override
+  Future<RatingFeedback> ratingFeedback() async {
+    await _lag();
+    final today = DateTime.now();
+    final d = DateTime(today.year, today.month, today.day);
+    return RatingFeedback(
+      average: 4.6,
+      count: 23,
+      recentStars: const [0, 1, 1, 6, 15],
+      recent: [
+        RiderComment(stars: 5, comment: 'Very polite and waited for me at the gate.', day: d),
+        RiderComment(stars: 4, comment: '', day: d),
+        RiderComment(stars: 3, comment: 'Music was too loud.', day: d.subtract(const Duration(days: 1))),
+        RiderComment(stars: 5, comment: 'Smooth ride, thank you!', day: d.subtract(const Duration(days: 2))),
+      ],
+    );
+  }
+
+  @override
   Stream<List<Park>> parks() {
     final now = DateTime.now();
     return Stream.value([

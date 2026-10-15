@@ -1,12 +1,14 @@
 import 'dart:async';
 import 'dart:io' show File;
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
 
+import '../../l10n/l10n.dart';
+import '../../l10n/text.dart';
 import '../../messages/messages_api.dart';
 import '../../theme/tokens.dart';
 import '../../ui/kit.dart';
@@ -15,12 +17,14 @@ import '../../ui/wrapped.dart';
 import '../driver_api.dart';
 import '../earnings_ui.dart';
 import '../models.dart';
+import '../shift.dart';
 
 const _short = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const _weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 String _dayLabel(DateTime d) => '${_weekdays[d.weekday - 1]} ${d.day} ${_short[d.month - 1]}';
-String _hourLabel(int h) => h == 0 ? '12 am' : (h < 12 ? '$h am' : (h == 12 ? '12 pm' : '${h - 12} pm'));
+/// "07:00": a 24-hour clock reads the same in every language the app speaks.
+String _hourLabel(int h) => '${h.toString().padLeft(2, '0')}:00';
 DateTime _today() {
   final n = DateTime.now();
   return DateTime(n.year, n.month, n.day);
@@ -28,9 +32,16 @@ DateTime _today() {
 
 /// Home: today's money, trips, riders and fares, and the way into the full reports.
 class TodayCard extends StatelessWidget {
-  const TodayCard({super.key, required this.days, required this.onOpen});
+  const TodayCard({super.key, required this.days, required this.onOpen, this.goal, this.onGoal, this.onEndShift});
   final List<DriverDay> days;
   final VoidCallback onOpen;
+
+  /// The driver's daily goal in kobo, if they set one; tapping the bar changes it.
+  final int? goal;
+  final VoidCallback? onGoal;
+
+  /// "End my shift": today's summary, read out loud.
+  final VoidCallback? onEndShift;
 
   @override
   Widget build(BuildContext context) {
@@ -63,6 +74,29 @@ class TodayCard extends StatelessWidget {
               _Stat(value: '${t.fares}', label: t.fares == 1 ? 'payment' : 'payments'),
             ],
           ),
+          if (onGoal != null) ...[
+            const SizedBox(height: 16),
+            GoalBar(earned: t.netKobo, goal: goal, onTap: onGoal!),
+          ],
+          if (onEndShift != null) ...[
+            const SizedBox(height: 14),
+            Pressable(
+              onTap: onEndShift,
+              child: Container(
+                height: 44,
+                decoration: BoxDecoration(borderRadius: BorderRadius.circular(22), border: Border.all(color: const Color(0xFF2A313C), width: 1.5)),
+                alignment: Alignment.center,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.record_voice_over_rounded, color: K.paper, size: 18),
+                    const SizedBox(width: 8),
+                    Text('End my shift', style: KText.body(K.paper).copyWith(fontWeight: FontWeight.w800)),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -331,7 +365,7 @@ class _DayBars extends StatelessWidget {
             Expanded(
               child: Semantics(
                 button: byDay[i] != null,
-                label: byDay[i] == null ? null : '${_dayLabel(byDay[i]!.day)}: ${naira(byDay[i]!.netKobo)}',
+                label: byDay[i] == null ? null : tr('${_dayLabel(byDay[i]!.day)}: ${naira(byDay[i]!.netKobo)}'),
                 child: GestureDetector(
                   onTap: byDay[i] == null ? null : () => onDay(byDay[i]!),
                   child: Padding(
@@ -612,7 +646,7 @@ Future<void> openDriverWrapped(BuildContext context, DriverApi api, DateTime mon
         fullscreenDialog: true,
         builder: (_) => WrappedStory(
           slides: w.slides,
-          card: StoryCard(kicker: 'My ${monthName(month)} driving with Konduct', headline: 'Konduct Wrapped', stats: w.stats, tags: brand.cardTags),
+          card: StoryCard(kicker: 'My ${monthName(month)} driving with Konduct', headline: 'Konduct\nWrapped', stats: w.stats, tags: brand.cardTags, style: StoryStyle.driver),
           caption: brand.caption('My ${monthName(month)} driving with Konduct: ${m.riders} riders, ${m.trips} trips, all cashless.'),
           fileName: 'konduct-wrapped-${month.year}-${month.month}',
         ),

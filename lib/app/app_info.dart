@@ -8,6 +8,21 @@ abstract final class AppInfo {
   static const role = 'driver';
   static const palette = Palette.driver;
   static const dark = true;
+
+  /// Links into the app: konductdriver://payout (AndroidManifest.xml). Its own scheme, so a
+  /// konduct:// link meant for the student app never asks which app to open.
+  static const linkScheme = 'konductdriver';
+  static const linkHosts = <String>{};
+
+  /// Screens a link, shortcut or widget may open (the home screen's app: actions).
+  static const linkScreens = {'payout', 'bank', 'account', 'reports', 'feedback', 'shift'};
+
+  /// Long-press shortcuts on the app icon: action, English title, Android drawable.
+  static const shortcuts = [
+    ('reports', "Today's earnings", 'ic_shortcut_earnings'),
+    ('payout', 'Pay out', 'ic_shortcut_payout'),
+    ('shift', 'End my shift', 'ic_shortcut_shift'),
+  ];
 }
 
 /// Backend settings. The region must match `REGION` in konduct-backend/functions/src/config.ts.

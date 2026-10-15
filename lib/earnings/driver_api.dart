@@ -56,6 +56,9 @@ abstract class DriverApi {
   /// Riders' average rating of this driver; count 0 before the first one.
   Stream<DriverRating> rating();
 
+  /// What riders said lately: stars and comments by day, never who said them.
+  Future<RatingFeedback> ratingFeedback();
+
   /// Parks shown in the app and how many buses are there, by name.
   Stream<List<Park>> parks();
 

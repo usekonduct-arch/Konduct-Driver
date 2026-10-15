@@ -198,6 +198,37 @@ class DriverRating {
   double get average => count == 0 ? 0 : sum / count;
 }
 
+/// driverRatingFeedback's answer.
+class RatingFeedback {
+  const RatingFeedback({required this.average, required this.count, required this.recentStars, required this.recent});
+
+  /// All-time average and count; null average before the first rating.
+  final double? average;
+  final int count;
+
+  /// How the latest ratings split, one star to five.
+  final List<int> recentStars;
+  final List<RiderComment> recent;
+
+  factory RatingFeedback.fromMap(Map<String, dynamic> m) => RatingFeedback(
+    average: (m['average'] as num?)?.toDouble(),
+    count: (m['count'] as num?)?.toInt() ?? 0,
+    recentStars: [for (final x in (m['recentStars'] as List? ?? const [0, 0, 0, 0, 0])) (x as num).toInt()],
+    recent: [
+      for (final r in (m['recent'] as List? ?? const []))
+        if (r is Map) RiderComment(stars: (r['stars'] as num?)?.toInt() ?? 0, comment: r['comment'] as String? ?? '', day: DateTime.tryParse('${r['day']}') ?? DateTime.now()),
+    ],
+  );
+}
+
+/// One rating: stars, what the rider wrote (maybe nothing) and the day. Never who.
+class RiderComment {
+  const RiderComment({required this.stars, required this.comment, required this.day});
+  final int stars;
+  final String comment;
+  final DateTime day;
+}
+
 /// driverDays/{uid}_{day}: one day's figures, kept by the server with every fare and refund.
 class DriverDay {
   const DriverDay({

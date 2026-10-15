@@ -1,5 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- Fingerprint or face in place of the PIN (lib/security/biometric.dart). -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
     <application
         android:label="Konduct Driver"
         android:name="${applicationName}"
@@ -25,7 +27,23 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- konductdriver://payout, konductdriver://reports, ...: lib/app/intents.dart turns them into screens. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="konductdriver"/>
+            </intent-filter>
+            <!-- lib/app/intents.dart opens links itself; don't let Flutter push them as routes. -->
+            <meta-data android:name="flutter_deeplinking_enabled" android:value="false"/>
         </activity>
+        <!-- Home-screen widget (KonductWidget.kt). -->
+        <receiver android:name=".KonductWidget" android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/konduct_widget_info"/>
+        </receiver>
         <!-- Push notifications (firebase_messaging): channel, icon and colour when the app is closed. -->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"

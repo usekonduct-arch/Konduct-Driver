@@ -259,6 +259,9 @@ class FirebaseDriverApi implements DriverApi {
       .map((s) => DriverRating(sum: (s.data()?['ratingSum'] as num?)?.toInt() ?? 0, count: (s.data()?['ratingCount'] as num?)?.toInt() ?? 0));
 
   @override
+  Future<RatingFeedback> ratingFeedback() async => RatingFeedback.fromMap(await _call('driverRatingFeedback', {}));
+
+  @override
   Stream<List<Park>> parks() => _db
       .collection('parks')
       .where('active', isEqualTo: true)
