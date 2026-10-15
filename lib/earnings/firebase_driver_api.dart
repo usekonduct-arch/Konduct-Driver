@@ -58,8 +58,10 @@ class FirebaseDriverApi implements DriverApi {
     }
   }
 
+  /// Live balance. If the listener is ever cut off (a dropped permission check, a sign-in refresh)
+  /// it reconnects by itself instead of freezing on the last number.
   @override
-  Stream<int?> balance() => _db.doc('wallets/driver_$_uid').snapshots().map((s) => (s.data()?['balanceKobo'] as num?)?.toInt());
+  Stream<int?> balance() => keepListening(() => _db.doc('wallets/driver_$_uid').snapshots().map((s) => (s.data()?['balanceKobo'] as num?)?.toInt()));
 
   @override
   Stream<List<Payment>> payments({int limit = 50}) => _db
@@ -314,4 +316,27 @@ class FirebaseDriverApi implements DriverApi {
       throw ApiException(reason, message, details: details);
     }
   }
+}
+
+/// A stream that re-opens itself a few seconds after an error, so one failed Firestore listener
+/// doesn't leave the screen stuck on an old value.
+Stream<T> keepListening<T>(Stream<T> Function() open, {Duration retry = const Duration(seconds: 3)}) {
+  late StreamController<T> c;
+  StreamSubscription<T>? sub;
+  Timer? again;
+  void start() {
+    sub = open().listen(c.add, onError: (Object _) {
+      sub?.cancel();
+      again = Timer(retry, start);
+    });
+  }
+
+  c = StreamController<T>(
+    onListen: start,
+    onCancel: () async {
+      again?.cancel();
+      await sub?.cancel();
+    },
+  );
+  return c.stream;
 }
