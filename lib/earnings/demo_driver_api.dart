@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import '../messages/messages_api.dart';
 import '../support/demo_support_api.dart';
 import '../support/support_api.dart';
 import 'driver_api.dart';
@@ -11,7 +12,7 @@ import 'models.dart';
 /// The bus seats 7 and has 3 paid by scan on the current trip, Shasha park → Main gate.
 /// Riders rate the driver 4.6 from 23 rides.
 class DemoDriverApi implements DriverApi {
-  DemoDriverApi({this.fullName = 'Tunde Adebayo'}) {
+  DemoDriverApi({this.fullName = 'Tunde Adebayo', MessagesApi? messages}) : messages = messages ?? DemoMessagesApi() {
     final now = DateTime.now();
     _payments.addAll([
       Payment(id: 'fare_d1', amountKobo: 60000, riders: 3, reference: 'KD-7Q4M2P', status: 'paid', at: now.subtract(const Duration(minutes: 6))),
@@ -42,6 +43,9 @@ class DemoDriverApi implements DriverApi {
 
   @override
   final SupportApi support = DemoSupportApi();
+
+  @override
+  final MessagesApi messages;
 
   @override
   Future<void> changePassword({required String current, required String next}) async {

@@ -1,3 +1,4 @@
+import '../messages/messages_api.dart';
 import '../support/support_api.dart';
 import 'models.dart';
 
@@ -8,6 +9,9 @@ abstract class DriverApi {
 
   /// Chat with Konduct staff.
   SupportApi get support;
+
+  /// Notifications, ads and push.
+  MessagesApi get messages;
 
   /// Changes the sign-in password after confirming the current one.
   Future<void> changePassword({required String current, required String next});

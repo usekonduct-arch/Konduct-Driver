@@ -5,6 +5,8 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../app/app_info.dart';
+import '../messages/firebase_messages_api.dart';
+import '../messages/messages_api.dart';
 import '../support/firebase_support_api.dart';
 import '../support/support_api.dart';
 import 'driver_api.dart';
@@ -23,6 +25,9 @@ class FirebaseDriverApi implements DriverApi {
 
   @override
   final SupportApi support = FirebaseSupportApi();
+
+  @override
+  final MessagesApi messages = FirebaseMessagesApi();
 
   @override
   Future<void> changePassword({required String current, required String next}) async {

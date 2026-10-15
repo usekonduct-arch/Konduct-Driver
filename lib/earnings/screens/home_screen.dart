@@ -13,6 +13,7 @@ import '../models.dart';
 import 'bank_account_screen.dart';
 import 'payout_screen.dart';
 import 'receipt_screen.dart';
+import '../../messages/messages_ui.dart';
 import 'settings_screen.dart';
 import '../../support/support_screens.dart';
 
@@ -71,135 +72,152 @@ class _HomeScreenState extends State<HomeScreen> {
   void _openPayment(Payment p) => pushScreen(context, ReceiptScreen(api: api, payment: p));
   void _openPayout(Payout p) => pushScreen(context, ReceiptScreen(api: api, payout: p));
 
+  /// Screens an ad or message can open with an app: link.
+  late final AppActions _actions = {
+    'payout': () => pushScreen(context, PayoutScreen(api: api)),
+    'bank': () => pushScreen(context, BankAccountScreen(api: api)),
+    'account': () => pushScreen(context, SettingsScreen(api: api, session: widget.session, onSignOut: widget.onSignOut)),
+  };
+
   @override
   Widget build(BuildContext context) {
     final name = widget.session.firstName.isEmpty ? 'driver' : widget.session.firstName;
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
-      child: Scaffold(
-        backgroundColor: K.ink,
-        body: SafeArea(
-          bottom: false,
-          child: RefreshIndicator(
-            onRefresh: _refresh,
-            color: K.ink,
-            backgroundColor: K.yellow,
-            // Not a lazy ListView: off-screen sections must keep their stream subscriptions.
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: EdgeInsets.fromLTRB(20, 10, 20, 24 + MediaQuery.paddingOf(context).bottom),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    children: [
-                      const KMark(size: 40),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Hi, $name', style: KText.h3(K.paper)),
-                            StreamBuilder<DriverRating>(
-                              stream: _rating,
-                              builder: (_, r) => Text(
-                                (r.data?.count ?? 0) == 0
-                                    ? 'Drive safe. Every fare lands here.'
-                                    : '★ ${r.data!.average.toStringAsFixed(1)} from ${r.data!.count} ${r.data!.count == 1 ? 'rating' : 'ratings'}',
-                                style: KText.small(K.muteDark),
+      child: MessagesHost(
+        api: api.messages,
+        actions: _actions,
+        child: Scaffold(
+          backgroundColor: K.ink,
+          body: SafeArea(
+            bottom: false,
+            child: RefreshIndicator(
+              onRefresh: _refresh,
+              color: K.ink,
+              backgroundColor: K.yellow,
+              // Not a lazy ListView: off-screen sections must keep their stream subscriptions.
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: EdgeInsets.fromLTRB(20, 10, 20, 24 + MediaQuery.paddingOf(context).bottom),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        const KMark(size: 40),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Hi, $name', style: KText.h3(K.paper)),
+                              StreamBuilder<DriverRating>(
+                                stream: _rating,
+                                builder: (_, r) => Text(
+                                  (r.data?.count ?? 0) == 0
+                                      ? 'Drive safe. Every fare lands here.'
+                                      : '★ ${r.data!.average.toStringAsFixed(1)} from ${r.data!.count} ${r.data!.count == 1 ? 'rating' : 'ratings'}',
+                                  style: KText.small(K.muteDark),
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                      if (api.isDemo) const Padding(padding: EdgeInsets.only(right: 10), child: DemoBadge()),
-                      SupportButton(api: api.support),
-                      const SizedBox(width: 8),
-                      RoundIconButton(
-                        icon: Icons.person_rounded,
-                        tooltip: 'Account',
-                        onTap: () => pushScreen(context, SettingsScreen(api: api, session: widget.session, onSignOut: widget.onSignOut)),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  Entrance(
-                    child: StreamBuilder<int?>(
-                      stream: _balance,
-                      builder: (_, b) => StreamBuilder<BankAccounts>(
-                        stream: _accounts,
-                        builder: (_, a) => StreamBuilder<List<Payment>>(
-                          stream: _paymentsToday,
-                          builder: (_, p) => _EarningsCard(
-                            balance: b.data,
-                            today: _todayTotal(p.data ?? const []),
-                            accounts: a.data,
-                            onPayOut: () => pushScreen(context, PayoutScreen(api: api)),
-                            onBank: () => pushScreen(context, BankAccountScreen(api: api)),
+                        if (api.isDemo) const Padding(padding: EdgeInsets.only(right: 10), child: DemoBadge()),
+                        NoticeBell(api: api.messages, actions: _actions),
+                        const SizedBox(width: 8),
+                        SupportButton(api: api.support),
+                        const SizedBox(width: 8),
+                        RoundIconButton(
+                          icon: Icons.person_rounded,
+                          tooltip: 'Account',
+                          onTap: () => pushScreen(context, SettingsScreen(api: api, session: widget.session, onSignOut: widget.onSignOut)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    Entrance(
+                      child: StreamBuilder<int?>(
+                        stream: _balance,
+                        builder: (_, b) => StreamBuilder<BankAccounts>(
+                          stream: _accounts,
+                          builder: (_, a) => StreamBuilder<List<Payment>>(
+                            stream: _paymentsToday,
+                            builder: (_, p) => _EarningsCard(
+                              balance: b.data,
+                              today: _todayTotal(p.data ?? const []),
+                              accounts: a.data,
+                              onPayOut: () => pushScreen(context, PayoutScreen(api: api)),
+                              onBank: () => pushScreen(context, BankAccountScreen(api: api)),
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                  StreamBuilder<BusLoad?>(
-                    stream: _bus,
-                    builder: (_, s) => s.data == null
-                        ? const SizedBox.shrink()
-                        : StreamBuilder<List<Landmark>>(
-                            stream: _landmarks,
-                            builder: (_, places) => Padding(
-                              padding: const EdgeInsets.only(top: 14),
-                              child: _SeatsCard(load: s.data!, api: api, landmarks: places.data ?? const []),
+                    AdCarousel(api: api.messages, actions: _actions, padding: const EdgeInsets.only(top: 14)),
+                    StreamBuilder<BusLoad?>(
+                      stream: _bus,
+                      builder: (_, s) => s.data == null
+                          ? const SizedBox.shrink()
+                          : StreamBuilder<List<Landmark>>(
+                              stream: _landmarks,
+                              builder: (_, places) => Padding(
+                                padding: const EdgeInsets.only(top: 14),
+                                child: _SeatsCard(load: s.data!, api: api, landmarks: places.data ?? const []),
+                              ),
                             ),
-                          ),
-                  ),
-                  StreamBuilder<List<Park>>(
-                    stream: _parks,
-                    builder: (_, s) => (s.data ?? const []).isEmpty
-                        ? const SizedBox.shrink()
-                        : Padding(
-                            padding: const EdgeInsets.only(top: 26),
-                            child: _Parks(parks: s.data!),
-                          ),
-                  ),
-                  const SizedBox(height: 26),
-                  Text('PAYMENTS', style: KText.kicker(K.muteDark)),
-                  const SizedBox(height: 4),
-                  StreamBuilder<List<Payment>>(
-                    stream: _payments,
-                    builder: (_, s) {
-                      if (s.hasError) {
-                        return const _Note(icon: Icons.cloud_off_rounded, text: 'Couldn\'t load your payments. Check your connection and try again.');
-                      }
-                      if (!s.hasData) {
-                        return const Padding(
-                          padding: EdgeInsets.all(24),
-                          child: Center(child: CircularProgressIndicator(color: K.yellow)),
+                    ),
+                    StreamBuilder<List<Park>>(
+                      stream: _parks,
+                      builder: (_, s) => (s.data ?? const []).isEmpty
+                          ? const SizedBox.shrink()
+                          : Padding(
+                              padding: const EdgeInsets.only(top: 26),
+                              child: _Parks(parks: s.data!),
+                            ),
+                    ),
+                    const SizedBox(height: 26),
+                    Text('PAYMENTS', style: KText.kicker(K.muteDark)),
+                    const SizedBox(height: 4),
+                    StreamBuilder<List<Payment>>(
+                      stream: _payments,
+                      builder: (_, s) {
+                        if (s.hasError) {
+                          return const _Note(icon: Icons.cloud_off_rounded, text: 'Couldn\'t load your payments. Check your connection and try again.');
+                        }
+                        if (!s.hasData) {
+                          return const Padding(
+                            padding: EdgeInsets.all(24),
+                            child: Center(child: CircularProgressIndicator(color: K.yellow)),
+                          );
+                        }
+                        if (s.data!.isEmpty) {
+                          return const _Note(
+                            icon: Icons.qr_code_2_rounded,
+                            text: 'No fares yet. When a student scans your sticker, the payment shows up here.',
+                          );
+                        }
+                        return Column(children: [for (final p in s.data!.take(15)) _PaymentTile(p, onTap: () => _openPayment(p))]);
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                    StreamBuilder<List<Payout>>(
+                      stream: _payouts,
+                      builder: (_, s) {
+                        final list = s.data ?? const [];
+                        if (list.isEmpty) return const SizedBox.shrink();
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('PAYOUTS', style: KText.kicker(K.muteDark)),
+                            const SizedBox(height: 4),
+                            for (final p in list) _PayoutTile(p, onTap: () => _openPayout(p)),
+                          ],
                         );
-                      }
-                      if (s.data!.isEmpty) {
-                        return const _Note(icon: Icons.qr_code_2_rounded, text: 'No fares yet. When a student scans your sticker, the payment shows up here.');
-                      }
-                      return Column(children: [for (final p in s.data!.take(15)) _PaymentTile(p, onTap: () => _openPayment(p))]);
-                    },
-                  ),
-                  const SizedBox(height: 20),
-                  StreamBuilder<List<Payout>>(
-                    stream: _payouts,
-                    builder: (_, s) {
-                      final list = s.data ?? const [];
-                      if (list.isEmpty) return const SizedBox.shrink();
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('PAYOUTS', style: KText.kicker(K.muteDark)),
-                          const SizedBox(height: 4),
-                          for (final p in list) _PayoutTile(p, onTap: () => _openPayout(p)),
-                        ],
-                      );
-                    },
-                  ),
-                ],
+                      },
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
