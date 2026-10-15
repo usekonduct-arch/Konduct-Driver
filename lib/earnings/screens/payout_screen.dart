@@ -8,6 +8,7 @@ import '../driver_api.dart';
 import '../earnings_ui.dart';
 import '../models.dart';
 import 'bank_account_screen.dart';
+import '../../support/support_screens.dart';
 
 /// Pays the whole balance to the driver's bank now, instead of waiting for the 9:30pm run.
 class PayoutScreen extends StatefulWidget {
@@ -56,6 +57,7 @@ class _PayoutScreenState extends State<PayoutScreen> {
           final enough = balance >= minWithdrawKobo;
           final ready = to != null && !to.onHold;
           return PageFrame(
+            trailing: SupportButton(api: widget.api.support),
             kicker: 'Pay out',
             title: ready ? 'Get paid now' : 'Not ready yet',
             bottom: ready

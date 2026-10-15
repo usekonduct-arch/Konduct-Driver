@@ -9,6 +9,8 @@ import '../driver_api.dart';
 import '../earnings_ui.dart';
 import '../models.dart';
 import 'bank_account_screen.dart';
+import '../../support/support_screens.dart';
+import 'password_screen.dart';
 
 /// Bank account, PIN, account lock and sign out.
 class SettingsScreen extends StatefulWidget {
@@ -118,8 +120,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 14),
           Text('SECURITY', style: KText.kicker(p.subtle)),
           const SizedBox(height: 8),
+          _action(
+            context,
+            Icons.password_rounded,
+            'Change password',
+            subtitle: 'The one you sign in with',
+            onTap: () => pushScreen(context, PasswordScreen(api: widget.api, email: widget.session.email)),
+          ),
           _action(context, Icons.pin_rounded, 'Change PIN', onTap: _changePin),
           _action(context, Icons.lock_person_rounded, 'Lock my account', subtitle: 'Phone stolen? Freeze payouts now.', color: K.coral, onTap: _lock),
+          const SizedBox(height: 14),
+          Text('HELP', style: KText.kicker(p.subtle)),
+          const SizedBox(height: 8),
+          _action(
+            context,
+            Icons.support_agent_rounded,
+            'Help & support',
+            subtitle: 'Chat with Konduct staff, or make a complaint',
+            onTap: () => pushScreen(context, SupportScreen(api: widget.api.support)),
+          ),
           const SizedBox(height: 22),
           _action(
             context,

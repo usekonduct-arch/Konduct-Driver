@@ -13,6 +13,7 @@ import '../models.dart';
 import 'bank_account_screen.dart';
 import 'payout_screen.dart';
 import 'settings_screen.dart';
+import '../../support/support_screens.dart';
 
 /// The driver's home: money waiting to be paid out, where it goes, today's fares and payouts.
 class HomeScreen extends StatefulWidget {
@@ -76,6 +77,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     if (api.isDemo) const Padding(padding: EdgeInsets.only(right: 10), child: DemoBadge()),
+                    SupportButton(api: api.support),
+                    const SizedBox(width: 8),
                     RoundIconButton(
                       icon: Icons.person_rounded,
                       tooltip: 'Account',

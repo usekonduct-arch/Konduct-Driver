@@ -158,4 +158,23 @@ void main() {
     await t.pumpWidget(const SizedBox());
     await settle(t, 1500);
   });
+
+  testWidgets('forgot password: the sheet sends a reset link and explains what happens next', (t) async {
+    phoneSize(t);
+    await t.pumpWidget(KonductApp(auth: AuthController(DemoAuthRepository()), api: DemoDriverApi()));
+    await settle(t, 2600);
+    await t.tap(find.text('Sign in')); // the driver app opens the account screen on "Sign in"
+    await settle(t);
+    await t.enterText(find.byType(TextField).at(0), 'tunde@gmail.com');
+    FocusManager.instance.primaryFocus?.unfocus();
+    await settle(t, 400);
+    await t.tap(find.text('Forgot password?'));
+    await settle(t, 900);
+    await t.tap(find.text('Send reset link'));
+    await settle(t, 1200);
+    expect(find.text('Check your email'), findsOneWidget);
+    expect(find.textContaining('If tunde@gmail.com has a Konduct account'), findsOneWidget);
+    await t.pumpWidget(const SizedBox());
+    await settle(t, 1500);
+  });
 }

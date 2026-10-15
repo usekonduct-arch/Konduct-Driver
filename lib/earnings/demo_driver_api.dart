@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import '../support/demo_support_api.dart';
+import '../support/support_api.dart';
 import 'driver_api.dart';
 import 'models.dart';
 
@@ -32,6 +34,18 @@ class DemoDriverApi implements DriverApi {
 
   @override
   bool get isDemo => true;
+
+  @override
+  final SupportApi support = DemoSupportApi();
+
+  @override
+  Future<void> changePassword({required String current, required String next}) async {
+    await _lag();
+    if (current != 'drive-safely-9') throw const ApiException('wrong_password', "That password isn't right. (Demo: drive-safely-9)");
+  }
+
+  @override
+  Future<void> sendPasswordReset() => _lag(500);
 
   Future<void> _lag([int ms = 700]) => Future.delayed(Duration(milliseconds: ms));
   void _touch() => _changed.add(null);

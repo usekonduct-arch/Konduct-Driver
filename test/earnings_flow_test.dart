@@ -108,4 +108,43 @@ void main() {
     await t.pumpWidget(const SizedBox());
     await settle(t, 1500);
   });
+
+  testWidgets('a driver changes their password from settings', (t) async {
+    await openHome(t);
+    await t.tap(find.bySemanticsLabel('Account'));
+    await settle(t, 900);
+    await t.scrollUntilVisible(find.text('Change password'), 200, scrollable: find.byType(Scrollable).first);
+    await t.tap(find.text('Change password'));
+    await settle(t, 900);
+    final fields = find.byType(TextField);
+    await t.enterText(fields.at(0), 'drive-safely-9');
+    await t.enterText(fields.at(1), 'a-new-password-4');
+    await t.enterText(fields.at(2), 'a-new-password-4');
+    await t.tap(find.text('Change password').last);
+    await settle(t, 1200);
+    expect(find.text('Password changed. Use the new one next time you sign in.'), findsOneWidget);
+    await t.pumpWidget(const SizedBox());
+    await settle(t, 1500);
+  });
+
+  testWidgets('a driver messages support from settings and sees the reply', (t) async {
+    await openHome(t);
+    await t.tap(find.bySemanticsLabel('Account'));
+    await settle(t, 900);
+    await t.scrollUntilVisible(find.text('Help & support'), 200, scrollable: find.byType(Scrollable).first);
+    await t.tap(find.text('Help & support'));
+    await settle(t, 900);
+    await t.tap(find.text('New message'));
+    await settle(t, 900);
+    await t.tap(find.text('Payment or wallet'));
+    await t.enterText(find.byType(TextField), 'My payout is late.');
+    FocusManager.instance.primaryFocus?.unfocus();
+    await settle(t, 300);
+    await t.tap(find.text('Send'));
+    await settle(t, 3500);
+    expect(find.text('My payout is late.'), findsOneWidget);
+    expect(find.text('Konduct support · Bisi'), findsOneWidget);
+    await t.pumpWidget(const SizedBox());
+    await settle(t, 1500);
+  });
 }

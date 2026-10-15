@@ -1,9 +1,19 @@
+import '../support/support_api.dart';
 import 'models.dart';
 
 /// Everything the earnings screens read and do. Reads are live Firestore streams the security
 /// rules limit to this driver; every change goes through a backend callable.
 abstract class DriverApi {
   bool get isDemo;
+
+  /// Chat with Konduct staff.
+  SupportApi get support;
+
+  /// Changes the sign-in password after confirming the current one.
+  Future<void> changePassword({required String current, required String next});
+
+  /// Emails a password reset link to the signed-in address.
+  Future<void> sendPasswordReset();
 
   /// Earnings waiting to be paid out, in kobo; null until the wallet loads.
   Stream<int?> balance();
