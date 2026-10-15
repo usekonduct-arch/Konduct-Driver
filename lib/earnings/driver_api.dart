@@ -56,6 +56,9 @@ abstract class DriverApi {
   /// Pays the whole balance out now instead of waiting for the evening run. Returns the amount.
   Future<int> payOutNow({required String pin});
 
+  /// The ledger's proof for one of this driver's fares ([payout] false) or payouts.
+  Future<ReceiptProof> receiptProof({required String id, bool payout = false});
+
   Future<void> changePin({required String oldPin, required String newPin});
 
   /// Puts the account on hold at once (stolen phone). Only an agent can lift it.

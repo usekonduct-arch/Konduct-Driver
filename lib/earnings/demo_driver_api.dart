@@ -28,7 +28,12 @@ class DemoDriverApi implements DriverApi {
   BankAccount? _active, _pending;
   var _seatsTaken = 3;
   TripRoute? _route = const TripRoute(fromId: 'shasha', fromName: 'Shasha park', toId: 'main-gate', toName: 'Main gate', etaMin: 12);
-  static const _places = [Landmark('hostels', 'Hostels'), Landmark('main-gate', 'Main gate'), Landmark('senate', 'Senate building'), Landmark('shasha', 'Shasha park')];
+  static const _places = [
+    Landmark('hostels', 'Hostels'),
+    Landmark('main-gate', 'Main gate'),
+    Landmark('senate', 'Senate building'),
+    Landmark('shasha', 'Shasha park'),
+  ];
   final _changed = StreamController<void>.broadcast();
   var _n = 0;
 
@@ -66,7 +71,8 @@ class DemoDriverApi implements DriverApi {
 
   @override
   Stream<BusLoad?> busLoad() => _live(
-    () => BusLoad(plate: 'OS 482 KJA', capacity: defaultBusSeats, taken: _seatsTaken, tripEndsAt: DateTime.now().add(const Duration(minutes: 12)), route: _route),
+    () =>
+        BusLoad(plate: 'OS 482 KJA', capacity: defaultBusSeats, taken: _seatsTaken, tripEndsAt: DateTime.now().add(const Duration(minutes: 12)), route: _route),
   );
 
   @override
@@ -163,6 +169,16 @@ class DemoDriverApi implements DriverApi {
       _touch();
     });
     return amount;
+  }
+
+  @override
+  Future<ReceiptProof> receiptProof({required String id, bool payout = false}) async {
+    await _lag(400);
+    final at = payout ? _payouts.where((p) => p.id == id).firstOrNull?.at : _payments.where((p) => p.id == id).firstOrNull?.at;
+    if (at == null) return const ReceiptProof(verified: false, posted: false);
+    // A made-up but stable fingerprint; there is no public receipt page in demo mode.
+    final hash = id.codeUnits.fold<int>(7, (h, c) => (h * 31 + c) & 0x7fffffff).toRadixString(16).padLeft(8, '0') * 8;
+    return ReceiptProof(verified: true, posted: true, hash: hash, postedAt: at);
   }
 
   @override

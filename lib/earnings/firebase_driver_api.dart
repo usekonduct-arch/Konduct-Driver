@@ -168,24 +168,29 @@ class FirebaseDriverApi implements DriverApi {
       TripRoute.fromMap(await _call('driverSetRoute', {'fromId': fromId, 'toId': toId, 'newTrip': newTrip}))!;
 
   @override
-  Stream<DriverRating> rating() => _db.doc('users/$_uid').snapshots().map(
-    (s) => DriverRating(sum: (s.data()?['ratingSum'] as num?)?.toInt() ?? 0, count: (s.data()?['ratingCount'] as num?)?.toInt() ?? 0),
-  );
+  Stream<DriverRating> rating() => _db
+      .doc('users/$_uid')
+      .snapshots()
+      .map((s) => DriverRating(sum: (s.data()?['ratingSum'] as num?)?.toInt() ?? 0, count: (s.data()?['ratingCount'] as num?)?.toInt() ?? 0));
 
   @override
-  Stream<List<Park>> parks() => _db.collection('parks').where('active', isEqualTo: true).snapshots().map(
-    (q) => q.docs.map((d) {
-      final m = d.data();
-      final at = (m['busCountAtMs'] as num?)?.toInt();
-      return Park(
-        id: d.id,
-        name: m['name'] as String? ?? '',
-        location: m['location'] as String? ?? '',
-        busCount: (m['busCount'] as num?)?.toInt() ?? 0,
-        updatedAt: at == null ? null : DateTime.fromMillisecondsSinceEpoch(at),
+  Stream<List<Park>> parks() => _db
+      .collection('parks')
+      .where('active', isEqualTo: true)
+      .snapshots()
+      .map(
+        (q) => q.docs.map((d) {
+          final m = d.data();
+          final at = (m['busCountAtMs'] as num?)?.toInt();
+          return Park(
+            id: d.id,
+            name: m['name'] as String? ?? '',
+            location: m['location'] as String? ?? '',
+            busCount: (m['busCount'] as num?)?.toInt() ?? 0,
+            updatedAt: at == null ? null : DateTime.fromMillisecondsSinceEpoch(at),
+          );
+        }).toList()..sort((a, b) => a.name.compareTo(b.name)),
       );
-    }).toList()..sort((a, b) => a.name.compareTo(b.name)),
-  );
 
   @override
   Stream<BankAccounts> bankAccounts() {
@@ -258,6 +263,10 @@ class FirebaseDriverApi implements DriverApi {
 
   @override
   Future<int> payOutNow({required String pin}) async => ((await _call('driverRequestPayout', {'pin': pin}))['amountKobo'] as num?)?.toInt() ?? 0;
+
+  @override
+  Future<ReceiptProof> receiptProof({required String id, bool payout = false}) async =>
+      ReceiptProof.fromMap(await _call('receiptProof', {'kind': payout ? 'payout' : 'fare', 'id': id}));
 
   @override
   Future<void> changePin({required String oldPin, required String newPin}) => _call('changePin', {'oldPin': oldPin, 'newPin': newPin});

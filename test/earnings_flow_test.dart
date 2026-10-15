@@ -30,6 +30,29 @@ void main() {
     await settle(t, 1500);
   });
 
+  testWidgets('tapping a fare prints its receipt, verified against the ledger', (t) async {
+    await openHome(t);
+    await t.ensureVisible(find.text('13 riders'));
+    await t.tap(find.text('13 riders'));
+    await settle(t, 5500);
+    expect(find.text('Fare received'), findsWidgets);
+    expect(find.text('KD-9VN4RC'), findsOneWidget);
+    expect(find.text('13 riders'), findsOneWidget);
+    expect(find.text('VERIFIED'), findsOneWidget);
+    expect(find.text('DRIVE SAFE'), findsOneWidget);
+    await t.pumpWidget(const SizedBox());
+    await settle(t, 1500);
+  });
+
+  testWidgets('pulling down refreshes the earnings', (t) async {
+    await openHome(t);
+    await t.fling(find.text('TO BE PAID OUT'), const Offset(0, 500), 1200);
+    await settle(t, 1500);
+    expect(find.text('₦3,400'), findsOneWidget);
+    await t.pumpWidget(const SizedBox());
+    await settle(t, 1500);
+  });
+
   testWidgets('a driver adds a bank account, then pays out the whole balance', (t) async {
     await openHome(t);
     await t.tap(find.text('Add bank account'));
