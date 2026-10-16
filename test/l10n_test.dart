@@ -120,7 +120,7 @@ void main() {
 
     test("the student app's links and anything else only open the app", () {
       expect(AppIntents.linkFor(Uri.parse('konduct://pay?code=AB12CD')), isNull);
-      expect(AppIntents.linkFor(Uri.parse('https://konduct.app/pay/AB12CD')), isNull);
+      expect(AppIntents.linkFor(Uri.parse('https://konduct.com.ng/pay/AB12CD')), isNull);
       // Dots can't climb anywhere: the path is normalised and only a plain argument is left.
       expect(AppIntents.linkFor(Uri.parse('konductdriver://bank/../../x')), 'app:bank/x');
       expect(AppIntents.linkFor(Uri.parse('konductdriver://unknown')), isNull);
@@ -141,10 +141,10 @@ void main() {
   group('version check', () {
     test('below the minimum must update; below the latest may', () {
       final v = VersionCheck.instance..build = 5;
-      v.apply({'minBuild': 6, 'latestBuild': 8, 'updateUrl': 'https://konduct.app/get'});
+      v.apply({'minBuild': 6, 'latestBuild': 8, 'updateUrl': 'https://konduct.com.ng/get'});
       expect(v.mustUpdate, isTrue);
-      v.apply({'minBuild': 3, 'latestBuild': 8, 'updateUrl': 'https://konduct.app/get'});
-      expect((v.mustUpdate, v.canUpdate, v.updateUrl), (false, true, 'https://konduct.app/get'));
+      v.apply({'minBuild': 3, 'latestBuild': 8, 'updateUrl': 'https://konduct.com.ng/get'});
+      expect((v.mustUpdate, v.canUpdate, v.updateUrl), (false, true, 'https://konduct.com.ng/get'));
       v.apply({'minBuild': 3, 'latestBuild': 5, 'updateUrl': 'http://insecure.example'});
       expect((v.mustUpdate, v.canUpdate, v.updateUrl), (false, false, null));
       v.apply(null);
