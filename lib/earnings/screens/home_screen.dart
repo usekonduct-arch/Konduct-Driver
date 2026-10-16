@@ -176,7 +176,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Hi, $name', style: KText.h3(K.paper)),
+                              Text('Hi, $name', style: KText.h3(K.paper).copyWith(fontSize: 17), maxLines: 1, overflow: TextOverflow.ellipsis),
                               StreamBuilder<DriverRating>(
                                 stream: _rating,
                                 builder: (_, r) => (r.data?.count ?? 0) == 0
