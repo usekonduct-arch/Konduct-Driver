@@ -975,4 +975,8 @@ const haStrings = <String, String>{
   '★ {average} from {count} rating': '★ {average} daga maki {count}',
   '★ {average} from {count} ratings': '★ {average} daga maki {count}',
   'BROUGHT TO YOU BY': 'DAGA',
+  'Terms of Service': 'Sharuɗɗan Sabis',
+  'Privacy Policy': 'Manufar Sirri',
+  'Account deletion': 'Goge asusu',
+  'I have read and agree to the Terms of Service, Privacy Policy and Account Deletion Policy.': 'Na karanta kuma na amince da Sharuɗɗan Sabis, Manufar Sirri da Manufar Goge Asusu.',
 };

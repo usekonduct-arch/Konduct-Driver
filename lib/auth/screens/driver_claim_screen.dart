@@ -6,6 +6,7 @@ import '../../theme/tokens.dart';
 import '../../ui/field.dart';
 import '../../ui/flow_scaffold.dart';
 import '../../ui/kit.dart';
+import '../../ui/legal.dart';
 import '../auth_repository.dart';
 
 /// FR-AUTH-03: drivers can't self-register. The agent who onboarded the driver at the park
@@ -29,6 +30,7 @@ class _DriverClaimScreenState extends State<DriverClaimScreen> {
   final _shake = GlobalKey<ShakeState>();
   bool _busy = false;
   bool _notFound = false;
+  bool _agree = false;
   String? _error;
 
   @override
@@ -98,7 +100,18 @@ class _DriverClaimScreenState extends State<DriverClaimScreen> {
       progress: widget.progress,
       onBack: _busy ? null : widget.onSignOut,
       demo: widget.demo,
-      bottom: KButton(label: 'Link my vehicle', icon: Icons.directions_bus_rounded, loading: _busy, onTap: _clean.length == _len ? _submit : null),
+      bottom: Column(
+        children: [
+          AgreeBox(
+            label: 'I have read and agree to the Terms of Service, Privacy Policy and Account Deletion Policy.',
+            value: _agree,
+            enabled: !_busy,
+            onChanged: (v) => setState(() => _agree = v),
+          ),
+          const SizedBox(height: 8),
+          KButton(label: 'Link my vehicle', icon: Icons.directions_bus_rounded, loading: _busy, onTap: _clean.length == _len && _agree ? _submit : null),
+        ],
+      ),
       child: SingleChildScrollView(
         padding: const EdgeInsets.only(top: 28),
         child: Column(
@@ -119,7 +132,7 @@ class _DriverClaimScreenState extends State<DriverClaimScreen> {
                   capitalization: TextCapitalization.characters,
                   formatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9A-Za-z]')), LengthLimitingTextInputFormatter(_len)],
                   action: TextInputAction.done,
-                  onSubmitted: (_) => _clean.length == _len ? _submit() : null,
+                  onSubmitted: (_) => _clean.length == _len && _agree ? _submit() : null,
                 ),
               ),
             ),

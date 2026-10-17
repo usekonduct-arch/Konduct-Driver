@@ -61,10 +61,19 @@ Future<void> createAccount(WidgetTester t, String email, String password) async 
   await settle(t, 1600);
 }
 
-Future<void> enterCode(WidgetTester t, String code) async {
+/// [agree] ticks the agreement box first (once per screen; a second try keeps it ticked).
+Future<void> enterCode(WidgetTester t, String code, {bool agree = true}) async {
   await t.enterText(find.byType(TextField).first, code);
   FocusManager.instance.primaryFocus?.unfocus();
   await settle(t, 400);
+  if (agree) {
+    // The button stays off until the driver agrees to the Terms, Privacy and Account Deletion policies.
+    await t.tap(find.text('Link my vehicle'));
+    await settle(t, 400);
+    expect(find.text('Enter your driver code.'), findsOneWidget);
+    await t.tap(find.textContaining('I have read and agree'));
+    await settle(t, 400);
+  }
   await t.tap(find.text('Link my vehicle'));
   await settle(t, 1800);
 }
@@ -103,7 +112,7 @@ void main() {
     expect(auth.stage, Stage.driverClaim);
     expect(find.textContaining('doesn\'t match'), findsOneWidget);
 
-    await enterCode(t, DemoAuthRepository.code.toLowerCase()); // typed in lowercase still works
+    await enterCode(t, DemoAuthRepository.code.toLowerCase(), agree: false); // typed in lowercase still works
     expect(auth.stage, Stage.pin);
     expect(find.text('Tunde Adebayo'), findsOneWidget);
 

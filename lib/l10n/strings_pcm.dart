@@ -975,4 +975,8 @@ const pcmStrings = <String, String>{
   '★ {average} from {count} rating': '★ {average} from {count} rating',
   '★ {average} from {count} ratings': '★ {average} from {count} ratings',
   'BROUGHT TO YOU BY': 'NA THEM BRING AM',
+  'Terms of Service': 'Terms of Service',
+  'Privacy Policy': 'Privacy Policy',
+  'Account deletion': 'How to delete account',
+  'I have read and agree to the Terms of Service, Privacy Policy and Account Deletion Policy.': 'I don read and I agree to the Terms of Service, Privacy Policy and the rules for deleting account.',
 };

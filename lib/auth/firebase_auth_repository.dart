@@ -49,7 +49,7 @@ class FirebaseAuthRepository implements AuthRepository {
 
   @override
   Future<DriverInvite?> claimDriver(String code) async {
-    final data = Map<String, dynamic>.from(await _call('claimDriverAccount', {'code': code}) as Map);
+    final data = Map<String, dynamic>.from(await _call('claimDriverAccount', {'code': code, 'legalVersion': AppConfig.legalVersion}) as Map);
     if (data['invited'] != true) return null;
     await _auth.currentUser?.getIdToken(true);
     return DriverInvite(

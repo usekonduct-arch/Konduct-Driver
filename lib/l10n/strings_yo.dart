@@ -975,4 +975,8 @@ const yoStrings = <String, String>{
   '★ {average} from {count} rating': '★ {average} láti inú ìràwọ̀ {count}',
   '★ {average} from {count} ratings': '★ {average} láti inú ìràwọ̀ {count}',
   'BROUGHT TO YOU BY': 'LÁTI ỌWỌ́',
+  'Terms of Service': 'Òfin Iṣẹ́',
+  'Privacy Policy': 'Ìlànà Àṣírí',
+  'Account deletion': 'Pípa àkáǹtì rẹ́',
+  'I have read and agree to the Terms of Service, Privacy Policy and Account Deletion Policy.': 'Mo ti kà á, mo sì gbà sí Òfin Iṣẹ́, Ìlànà Àṣírí àti Ìlànà Pípa Àkáǹtì Rẹ́.',
 };
