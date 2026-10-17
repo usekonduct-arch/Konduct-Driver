@@ -974,4 +974,5 @@ const pcmStrings = <String, String>{
   '~{etaMin} min': '~{etaMin} min',
   '★ {average} from {count} rating': '★ {average} from {count} rating',
   '★ {average} from {count} ratings': '★ {average} from {count} ratings',
+  'BROUGHT TO YOU BY': 'NA THEM BRING AM',
 };

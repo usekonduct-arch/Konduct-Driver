@@ -974,4 +974,5 @@ const yoStrings = <String, String>{
   '~{etaMin} min': '~ìṣẹ́jú {etaMin}',
   '★ {average} from {count} rating': '★ {average} láti inú ìràwọ̀ {count}',
   '★ {average} from {count} ratings': '★ {average} láti inú ìràwọ̀ {count}',
+  'BROUGHT TO YOU BY': 'LÁTI ỌWỌ́',
 };

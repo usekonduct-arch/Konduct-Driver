@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io' show File;
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart' hide Text;
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
@@ -635,6 +636,11 @@ Future<void> openDriverWrapped(BuildContext context, DriverApi api, DateTime mon
   try {
     final days = await api.days(month).first.timeout(const Duration(seconds: 8));
     final brand = await api.messages.brand().first.timeout(const Duration(seconds: 4), onTimeout: () => const Brand());
+    final sponsor = await api.messages.wrappedSponsor(month).timeout(const Duration(seconds: 4), onTimeout: () => null);
+    // The share card is drawn off-screen into a picture: its logo has to be loaded first.
+    if (sponsor != null && sponsor.logoUrl.isNotEmpty && navigator.mounted) {
+      await precacheImage(CachedNetworkImageProvider(sponsor.logoUrl), navigator.context).catchError((_) {});
+    }
     final m = DriverMonth(month, days);
     if (m.worked.isEmpty) {
       messenger.showSnackBar(SnackBar(content: Text('No fares in ${monthName(month)}, so no Wrapped yet.')));
@@ -646,7 +652,17 @@ Future<void> openDriverWrapped(BuildContext context, DriverApi api, DateTime mon
         fullscreenDialog: true,
         builder: (_) => WrappedStory(
           slides: w.slides,
-          card: StoryCard(kicker: 'My ${monthName(month)} driving with Konduct', headline: 'Konduct\nWrapped', stats: w.stats, tags: brand.cardTags, style: StoryStyle.driver),
+          sponsor: sponsor,
+          tracker: api.messages.tracker,
+          card: StoryCard(
+            kicker: 'My ${monthName(month)} driving with Konduct',
+            headline: 'Konduct\nWrapped',
+            stats: w.stats,
+            tags: brand.cardTags,
+            style: StoryStyle.driver,
+            sponsorName: sponsor?.name ?? '',
+            sponsorLogoUrl: sponsor?.logoUrl ?? '',
+          ),
           caption: brand.caption('My ${monthName(month)} driving with Konduct: ${m.riders} riders, ${m.trips} trips, all cashless.'),
           fileName: 'konduct-wrapped-${month.year}-${month.month}',
         ),

@@ -974,4 +974,5 @@ const haStrings = <String, String>{
   '~{etaMin} min': '~minti {etaMin}',
   '★ {average} from {count} rating': '★ {average} daga maki {count}',
   '★ {average} from {count} ratings': '★ {average} daga maki {count}',
+  'BROUGHT TO YOU BY': 'DAGA',
 };
