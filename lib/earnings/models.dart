@@ -66,13 +66,13 @@ class ReceiptProof {
   );
 }
 
-/// A Nigerian bank from Bachs's list.
+/// A Nigerian bank from Paystack's list.
 class Bank {
   const Bank(this.code, this.name);
   final String code, name;
 }
 
-/// payoutAccounts/{id}: where payouts go. The full account number stays at Bachs.
+/// payoutAccounts/{id}: where payouts go. The full account number stays at Paystack.
 class BankAccount {
   const BankAccount({
     required this.id,

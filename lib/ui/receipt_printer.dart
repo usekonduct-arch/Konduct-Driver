@@ -65,7 +65,7 @@ class Slip {
   /// The ledger entry's hash, shortened, so a printout can be matched by hand.
   final String? fingerprint;
 
-  /// A line under the total, such as "Waiting for Bachs to confirm the payment".
+  /// A line under the total, such as "Waiting for Paystack to confirm the payment".
   final String? note;
   final bool strikeAmount;
 

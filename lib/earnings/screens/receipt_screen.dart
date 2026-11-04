@@ -160,7 +160,7 @@ Slip _payoutSlip(Payout p, ReceiptProof? proof, String? problem) => Slip(
     SlipLine('Ref', _shortId(p.id), strong: true),
     if (p.last4.isNotEmpty) SlipLine('To account', '****${p.last4}'),
     SlipLine('Sent by', p.trigger == 'daily' ? 'Evening payout run' : 'Pay out now'),
-    const SlipLine('Processor', 'Bachs'),
+    const SlipLine('Processor', 'Paystack'),
   ],
   status: p.paid ? 'Paid to your bank' : (p.returned ? 'Returned to your balance' : 'On its way'),
   seal: _seal(reversed: p.returned, pending: p.onItsWay, proof: proof, problem: problem),
